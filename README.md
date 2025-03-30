@@ -1,85 +1,87 @@
-# HWP & DOC Converter
+# HWP & DOC 변환기
 
-A web-based application for converting HWP (Hangul Word Processor) and DOC/DOCX (Microsoft Word) files to various formats.
+[English Version(영어 버전)](README.en.md)
 
-## Features
+HWP(한글 워드 프로세서) 및 DOC/DOCX(마이크로소프트 워드) 파일을 다양한 형식으로 변환하는 웹 기반 애플리케이션입니다.
 
-- Convert HWP files to TXT and PDF
-- Convert DOC/DOCX files to various formats
-- User authentication and authorization
-- Asynchronous processing with Redis queue
-- Task status tracking and notifications
-- Responsive web interface using Bootstrap 5
+## 주요 기능
 
-## Technologies Used
+- HWP 파일을 TXT 및 PDF로 변환
+- DOC/DOCX 파일을 다양한 형식으로 변환
+- 사용자 인증 및 권한 부여
+- Redis 큐를 사용한 비동기 처리
+- 작업 상태 추적 및 알림
+- Bootstrap 5를 사용한 반응형 웹 인터페이스
+
+## 사용 기술
 
 - Java 21
 - Spring Boot 3.4.4
 - Spring Security 6
 - Spring Data JPA & Redis
 - Thymeleaf
-- MySQL/MSSQL for database
-- Redis for caching and task queue
-- hwplib for HWP file handling
-- Bootstrap 5 for front-end
+- MySQL/MSSQL (데이터베이스)
+- Redis (캐싱 및 작업 큐)
+- hwplib (HWP 파일 처리)
+- Bootstrap 5 (프론트엔드)
 
-## Prerequisites
+## 필수 요구사항
 
 - Java 21 JDK
-- MySQL or MS SQL Server
-- Redis server
-- Maven or Gradle
+- MySQL 또는 MS SQL Server
+- Redis 서버
+- Maven 또는 Gradle
 
-## Setup and Installation
+## 설치 및 설정
 
-1. Clone the repository:
+1. 저장소 복제:
    ```bash
    git clone https://github.com/yuseok-kim-edushare/hwpconvert.git
    cd hwpconvert
    ```
 
-2. Configure database and Redis:
-   Edit `src/main/resources/application.yaml` and update the database and Redis connection settings.
+2. 데이터베이스 및 Redis 구성:
+   `src/main/resources/application.yaml` 파일을 수정하여 데이터베이스 및 Redis 연결 설정을 업데이트하세요.
 
-3. Build the application:
+3. 애플리케이션 빌드:
    ```bash
    ./gradlew build
    ```
 
-4. Run the application:
+4. 애플리케이션 실행:
    ```bash
    ./gradlew bootRun
    ```
    
-   The application will be available at `http://localhost:8080`
+   애플리케이션은 `http://localhost:8080`에서 접속할 수 있습니다.
 
-## Default Admin Account
+## 기본 관리자 계정
 
-The system creates a default admin account on first startup:
-- Username: admin
-- Password: admin
+시스템은 첫 시작 시 기본 관리자 계정을 생성합니다:
+- 사용자 이름: admin
+- 비밀번호: admin
 
-Make sure to change this password in production environments.
+운영 환경에서는 반드시 이 비밀번호를 변경하세요.
 
-## Project Structure
+## 프로젝트 구조
 
-- `config/` - Configuration classes
-- `controller/` - Web controllers
-- `model/` - Data models
-- `repository/` - Data access interfaces
-- `service/` - Business logic
-- `util/` - Utility classes
-- `resources/templates/` - Thymeleaf templates
-- `resources/static/` - Static resources (CSS, JS, images)
+- `config/` - 구성 클래스
+- `controller/` - 웹 컨트롤러
+- `model/` - 데이터 모델
+- `repository/` - 데이터 액세스 인터페이스
+- `service/` - 비즈니스 로직
+- `util/` - 유틸리티 클래스
+- `resources/templates/` - Thymeleaf 템플릿
+- `resources/static/` - 정적 리소스(CSS, JS, 이미지)
 
-## License
+## 라이선스
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+이 프로젝트는 MIT 라이선스에 따라 라이선스가 부여됩니다. 자세한 내용은 LICENSE 파일을 참조하세요.
 
-## Acknowledgments
+## 감사의 말
 
-- [hwplib](https://github.com/neolord0/hwplib) for HWP file processing
-  - Also Thanks for [Hancom](https://www.hancom.com) which develope hwp: hangle word processor
-    my project rely on hwplib which based on Hancom's Public opened Reference document hwp/x fromat
-- [Spring Boot](https://spring.io/projects/spring-boot) for the framework
-- [Bootstrap](https://getbootstrap.com/) for the UI components 
+- HWP 파일 처리를 위한 [hwplib](https://github.com/neolord0/hwplib)
+  - 또한 hwp(한글 워드 프로세서)를 개발한 [한컴](https://www.hancom.com)에 감사드립니다.
+    본 프로젝트는 한컴의 공개 참조 문서인 hwp/x 형식을 기반으로 한 hwplib에 의존하고 있습니다.
+- 프레임워크를 위한 [Spring Boot](https://spring.io/projects/spring-boot)
+- UI 컴포넌트를 위한 [Bootstrap](https://getbootstrap.com/) 
