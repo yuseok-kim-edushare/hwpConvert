@@ -10,7 +10,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   # Alternative DB Config for MS-SQL
   # datasource:
-  #   url: jdbc:sqlserver://localhost:1433;databaseName=hwpconvert;trustServerCertificate=true
+  #   url: jdbc:sqlserver://localhost:1433;databaseName=hwpconvert;trustServerCertificate=true;encrypt=true;
   #   username: sa
   #   password: password
   #   driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
