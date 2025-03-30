@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
+<head>
+    <title>Document Details</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container py-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/documents}">My Documents</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Document Details</li>
+                </ol>
+            </nav>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="card-title mb-0">Document Information</h4>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tr>
+                                    <th style="width: 30%">Original Filename</th>
+                                    <td th:text="${document.originalFilename}"></td>
+                                </tr>
+                                <tr>
+                                    <th>Original Format</th>
+                                    <td th:text="${document.originalFormat}"></td>
+                                </tr>
+                                <tr>
+                                    <th>Upload Date</th>
+                                    <td th:text="${#temporals.format(document.uploadDate, 'yyyy-MM-dd HH:mm')}"></td>
+                                </tr>
+                                <tr>
+                                    <th>File Size</th>
+                                    <td th:text="${#numbers.formatDecimal(document.fileSize / 1024, 0, 2) + ' KB'}"></td>
+                                </tr>
+                                <tr th:if="${document.converted}">
+                                    <th>Converted Format</th>
+                                    <td th:text="${document.convertedFormat}"></td>
+                                </tr>
+                                <tr th:if="${document.converted}">
+                                    <th>Conversion Date</th>
+                                    <td th:text="${#temporals.format(document.conversionDate, 'yyyy-MM-dd HH:mm')}"></td>
+                                </tr>
+                                <tr th:if="${document.conversionError != null}">
+                                    <th>Conversion Error</th>
+                                    <td class="text-danger" th:text="${document.conversionError}"></td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td>
+                                        <span th:if="${document.converted}" class="badge bg-success">Converted</span>
+                                        <span th:if="${!document.converted && document.conversionError == null}" class="badge bg-warning text-dark">Processing</span>
+                                        <span th:if="${document.conversionError != null}" class="badge bg-danger">Failed</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="card-title mb-0">Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a th:if="${document.converted}" th:href="@{'/documents/download/' + ${document.downloadToken}}" class="btn btn-primary">
+                                    <i class="bi bi-download"></i> Download Converted File
+                                </a>
+                                <form th:action="@{'/documents/' + ${document.id} + '/delete'}" method="post">
+                                    <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to delete this document?')">
+                                        <i class="bi bi-trash"></i> Delete Document
+                                    </button>
+                                </form>
+                                <a th:href="@{/documents}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Documents
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" th:if="${document.converted}">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="card-title mb-0">Sharing</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Share this link to allow others to download the converted file:</p>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="shareLink" 
+                                       th:value="${'http://' + #request.serverName + ':' + #request.serverPort + '/documents/download/' + document.downloadToken}" 
+                                       readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyShareLink()">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <div id="copySuccess" class="alert alert-success d-none">
+                                Link copied to clipboard!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <th:block layout:fragment="scripts">
+        <script>
+            function copyShareLink() {
+                var copyText = document.getElementById("shareLink");
+                copyText.select();
+                copyText.setSelectionRange(0, 99999);
+                navigator.clipboard.writeText(copyText.value);
+                
+                var copySuccess = document.getElementById("copySuccess");
+                copySuccess.classList.remove("d-none");
+                setTimeout(function() {
+                    copySuccess.classList.add("d-none");
+                }, 3000);
+            }
+        </script>
+    </th:block>
+</body>
+</html> 

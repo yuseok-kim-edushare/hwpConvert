@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
+<head>
+    <title>My Documents</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container py-4">
+            <h2 class="mb-4">My Documents</h2>
+            
+            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <span th:text="${param.error == 'unauthorized'} ? 'You are not authorized to access this document' : 'An error occurred'"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <span th:text="${param.success == 'deleted'} ? 'Document deleted successfully' : 'Operation successful'"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4" id="documentTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="converted-tab" data-bs-toggle="tab" data-bs-target="#converted" type="button" role="tab" aria-controls="converted" aria-selected="true">
+                        Converted
+                        <span class="badge bg-primary" th:text="${#lists.size(convertedDocuments)}"></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="false">
+                        Pending
+                        <span class="badge bg-warning text-dark" th:text="${#lists.size(pendingDocuments)}"></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="failed-tab" data-bs-toggle="tab" data-bs-target="#failed" type="button" role="tab" aria-controls="failed" aria-selected="false">
+                        Failed
+                        <span class="badge bg-danger" th:text="${#lists.size(failedDocuments)}"></span>
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- Tab content -->
+            <div class="tab-content" id="documentTabsContent">
+                <!-- Converted Documents -->
+                <div class="tab-pane fade show active" id="converted" role="tabpanel" aria-labelledby="converted-tab">
+                    <div th:if="${#lists.isEmpty(convertedDocuments)}" class="alert alert-info">
+                        You don't have any converted documents yet.
+                    </div>
+                    <div class="table-responsive" th:unless="${#lists.isEmpty(convertedDocuments)}">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Original File</th>
+                                    <th>Conversion</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="doc : ${convertedDocuments}">
+                                    <td th:text="${doc.originalFilename}"></td>
+                                    <td>
+                                        <span th:text="${doc.originalFormat}"></span> 
+                                        <i class="bi bi-arrow-right"></i> 
+                                        <span th:text="${doc.convertedFormat}"></span>
+                                    </td>
+                                    <td th:text="${#temporals.format(doc.conversionDate, 'yyyy-MM-dd HH:mm')}"></td>
+                                    <td>
+                                        <a th:href="@{'/documents/download/' + ${doc.downloadToken}}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-download"></i> Download
+                                        </a>
+                                        <a th:href="@{'/documents/' + ${doc.id}}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-info-circle"></i> Details
+                                        </a>
+                                        <form th:action="@{'/documents/' + ${doc.id} + '/delete'}" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this document?')">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Pending Documents -->
+                <div class="tab-pane fade" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+                    <div th:if="${#lists.isEmpty(pendingDocuments)}" class="alert alert-info">
+                        You don't have any pending conversions.
+                    </div>
+                    <div class="table-responsive" th:unless="${#lists.isEmpty(pendingDocuments)}">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Original File</th>
+                                    <th>Conversion</th>
+                                    <th>Upload Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="doc : ${pendingDocuments}">
+                                    <td th:text="${doc.originalFilename}"></td>
+                                    <td>
+                                        <span th:text="${doc.originalFormat}"></span> 
+                                        <i class="bi bi-arrow-right"></i> 
+                                        <span th:text="${doc.convertedFormat}"></span>
+                                    </td>
+                                    <td th:text="${#temporals.format(doc.uploadDate, 'yyyy-MM-dd HH:mm')}"></td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Processing</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Failed Documents -->
+                <div class="tab-pane fade" id="failed" role="tabpanel" aria-labelledby="failed-tab">
+                    <div th:if="${#lists.isEmpty(failedDocuments)}" class="alert alert-info">
+                        You don't have any failed conversions.
+                    </div>
+                    <div class="table-responsive" th:unless="${#lists.isEmpty(failedDocuments)}">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Original File</th>
+                                    <th>Attempted Conversion</th>
+                                    <th>Error</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="doc : ${failedDocuments}">
+                                    <td th:text="${doc.originalFilename}"></td>
+                                    <td>
+                                        <span th:text="${doc.originalFormat}"></span> 
+                                        <i class="bi bi-arrow-right"></i> 
+                                        <span th:text="${doc.convertedFormat}"></span>
+                                    </td>
+                                    <td th:text="${doc.conversionError}"></td>
+                                    <td>
+                                        <form th:action="@{'/documents/' + ${doc.id} + '/delete'}" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this document?')">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <a th:href="@{/convert}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Convert New Document
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

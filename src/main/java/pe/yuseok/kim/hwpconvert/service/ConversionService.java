@@ -14,13 +14,15 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import kr.dogfoot.hwplib.object.HWPFile;
-import kr.dogfoot.hwplib.reader.HWPReader;
-import kr.dogfoot.hwplib.tool.textextractor.TextExtractor;
-import kr.dogfoot.hwplib.tool.textextractor.TextExtractMethod;
-import kr.dogfoot.hwplib.writer.HWPWriter;
 import lombok.extern.slf4j.Slf4j;
+import pe.yuseok.kim.hwpconvert.model.ConversionResult;
 import pe.yuseok.kim.hwpconvert.model.ConversionTask;
+import pe.yuseok.kim.hwpconvert.model.entity.Document;
+import pe.yuseok.kim.hwpconvert.model.entity.User;
+import pe.yuseok.kim.hwpconvert.repository.DocumentRepository;
+import pe.yuseok.kim.hwpconvert.repository.UserRepository;
+import pe.yuseok.kim.hwpconvert.service.conversion.ConversionStrategyFactory;
+import pe.yuseok.kim.hwpconvert.service.conversion.ConversionStrategy;
 import pe.yuseok.kim.hwpconvert.util.FileUtils;
 
 @Slf4j
@@ -29,6 +31,9 @@ public class ConversionService {
 
     private final QueueService queueService;
     private final FileUtils fileUtils;
+    private final ConversionStrategyFactory conversionStrategyFactory;
+    private final DocumentRepository documentRepository;
+    private final UserRepository userRepository;
     
     @Value("${conversion.temp-dir:./temp}")
     private String tempDir;
@@ -36,9 +41,17 @@ public class ConversionService {
     @Value("${conversion.output-dir:./output}")
     private String outputDir;
     
-    public ConversionService(@Lazy QueueService queueService, FileUtils fileUtils) {
+    public ConversionService(
+            @Lazy QueueService queueService, 
+            FileUtils fileUtils,
+            ConversionStrategyFactory conversionStrategyFactory,
+            DocumentRepository documentRepository,
+            UserRepository userRepository) {
         this.queueService = queueService;
         this.fileUtils = fileUtils;
+        this.conversionStrategyFactory = conversionStrategyFactory;
+        this.documentRepository = documentRepository;
+        this.userRepository = userRepository;
     }
 
     public ConversionTask queueConversion(String userId, MultipartFile file, String targetFormat) throws IOException {
@@ -46,6 +59,15 @@ public class ConversionService {
         String contentType = file.getContentType();
         if (contentType == null || !isSupportedContentType(contentType)) {
             throw new IllegalArgumentException("Unsupported file type: " + contentType);
+        }
+        
+        // Get source format from content type
+        String sourceFormat = getFormatFromContentType(contentType);
+        
+        // Check if conversion is supported
+        if (!conversionStrategyFactory.isConversionSupported(sourceFormat, targetFormat)) {
+            throw new IllegalArgumentException(
+                    "Conversion from " + sourceFormat + " to " + targetFormat + " is not supported.");
         }
         
         // Create task
@@ -58,6 +80,21 @@ public class ConversionService {
         
         // Save uploaded file to temp directory
         String tempFilePath = saveToTempDir(file);
+        
+        // Create document entity and save to database
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        
+        Document document = new Document();
+        document.setOriginalFilename(file.getOriginalFilename());
+        document.setStoredFilename(Paths.get(tempFilePath).getFileName().toString());
+        document.setOriginalFormat(sourceFormat);
+        document.setConvertedFormat(targetFormat);
+        document.setFileSize(file.getSize());
+        document.setOwner(user);
+        document.setDownloadToken(UUID.randomUUID().toString());
+        
+        documentRepository.save(document);
         
         // Store file path in Redis
         queueService.storeFilePath(task.getId(), tempFilePath);
@@ -82,12 +119,29 @@ public class ConversionService {
             task.setProcessedAt(LocalDateTime.now());
             queueService.updateTask(task);
             
-            // Process file based on content type and target format
-            String resultFilePath = convertFile(sourceFile, task.getSourceFileContentType(), task.getTargetFormat());
+            // Get source format from content type
+            String sourceFormat = getFormatFromContentType(task.getSourceFileContentType());
+            String targetFormat = task.getTargetFormat();
+            
+            // Create output directory if it doesn't exist
+            File outputDirectory = new File(outputDir);
+            if (!outputDirectory.exists()) {
+                outputDirectory.mkdirs();
+            }
+            
+            // Process file using strategy pattern
+            ConversionResult result = convertFile(sourceFile, sourceFormat, targetFormat);
+            
+            // Update document in database if conversion succeeded
+            updateDocumentAfterConversion(sourceFile.getName(), result);
             
             // Update task with result
-            task.setStatus("COMPLETED");
-            task.setResultFileUrl(resultFilePath);
+            task.setStatus(result.isSuccess() ? "COMPLETED" : "FAILED");
+            if (!result.isSuccess()) {
+                task.setErrorMessage(result.getErrorMessage());
+            } else {
+                task.setResultFileUrl(result.getDownloadUrl());
+            }
             queueService.updateTask(task);
             
         } catch (Exception e) {
@@ -98,55 +152,41 @@ public class ConversionService {
         }
     }
     
-    private String convertFile(File sourceFile, String sourceType, String targetFormat) throws Exception {
-        String resultPath;
+    private ConversionResult convertFile(File sourceFile, String sourceFormat, String targetFormat) {
+        // Get appropriate conversion strategy
+        ConversionStrategy strategy = conversionStrategyFactory.getStrategy(sourceFormat, targetFormat)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No conversion strategy found for " + sourceFormat + " to " + targetFormat));
         
-        switch (sourceType.toLowerCase()) {
-            case "application/haansofthwp":
-            case "application/x-hwp":
-                resultPath = convertHwpFile(sourceFile, targetFormat);
-                break;
-            case "application/msword":
-            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                resultPath = convertDocFile(sourceFile, targetFormat);
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported source type: " + sourceType);
+        // Create output directory
+        File outputDirectory = new File(outputDir);
+        if (!outputDirectory.exists()) {
+            outputDirectory.mkdirs();
         }
         
-        return resultPath;
+        // Perform conversion
+        return strategy.convert(sourceFile, outputDirectory, targetFormat);
     }
     
-    private String convertHwpFile(File hwpFile, String targetFormat) throws Exception {
-        String outputFileName = UUID.randomUUID().toString() + "." + targetFormat.toLowerCase();
-        String outputPath = Paths.get(outputDir, outputFileName).toString();
+    private void updateDocumentAfterConversion(String storedFilename, ConversionResult result) {
+        // Find document by stored filename
+        Document document = documentRepository.findAll().stream()
+                .filter(doc -> doc.getStoredFilename().contains(storedFilename))
+                .findFirst()
+                .orElse(null);
         
-        // Ensure output directory exists
-        Files.createDirectories(Paths.get(outputDir));
-        
-        HWPFile hwpDocument = HWPReader.fromFile(hwpFile);
-        
-        switch (targetFormat.toLowerCase()) {
-            case "txt":
-                // Extract text from HWP
-                String text = TextExtractor.extract(hwpDocument, TextExtractMethod.InsertControlTextBetweenParagraphText);
-                Files.writeString(Paths.get(outputPath), text);
-                break;
-            case "pdf":
-                // For actual implementation, you would need to use a library like PDFBox
-                // or other conversion tool. This is a placeholder.
-                throw new UnsupportedOperationException("HWP to PDF conversion not implemented yet");
-            default:
-                throw new IllegalArgumentException("Unsupported target format for HWP: " + targetFormat);
+        if (document != null) {
+            if (result.isSuccess()) {
+                document.setConvertedFilename(result.getConvertedFileName());
+                document.setConverted(true);
+                document.setConversionDate(result.getCompletionTime());
+            } else {
+                document.setConversionError(result.getErrorMessage());
+            }
+            documentRepository.save(document);
+        } else {
+            log.warn("Document not found for stored filename: {}", storedFilename);
         }
-        
-        return outputPath;
-    }
-    
-    private String convertDocFile(File docFile, String targetFormat) {
-        // Placeholder for DOC/DOCX conversion
-        // For actual implementation, you would need to use a library like Apache POI
-        throw new UnsupportedOperationException("DOC conversion not implemented yet");
     }
     
     private String saveToTempDir(MultipartFile file) throws IOException {
@@ -171,5 +211,19 @@ public class ConversionService {
                contentType.equals("application/x-hwp") ||
                contentType.equals("application/msword") ||
                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    }
+    
+    private String getFormatFromContentType(String contentType) {
+        switch (contentType.toLowerCase()) {
+            case "application/haansofthwp":
+            case "application/x-hwp":
+                return "hwp";
+            case "application/msword":
+                return "doc";
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                return "docx";
+            default:
+                throw new IllegalArgumentException("Unsupported content type: " + contentType);
+        }
     }
 } 
