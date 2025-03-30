@@ -209,6 +209,7 @@ public class ConversionService {
     private boolean isSupportedContentType(String contentType) {
         return contentType.equals("application/haansofthwp") || 
                contentType.equals("application/x-hwp") ||
+               contentType.equals("application/vnd.hancom.hwpx") ||
                contentType.equals("application/msword") ||
                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     }
@@ -218,6 +219,8 @@ public class ConversionService {
             case "application/haansofthwp":
             case "application/x-hwp":
                 return "hwp";
+            case "application/vnd.hancom.hwpx":
+                return "hwpx";
             case "application/msword":
                 return "doc";
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":

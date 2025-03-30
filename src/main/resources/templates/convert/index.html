@@ -19,17 +19,17 @@
                                 <div class="mb-3">
                                     <label for="file" class="form-label">Select Document</label>
                                     <input type="file" name="file" id="file" class="form-control" required 
-                                           accept=".hwp,.doc,.docx,application/haansofthwp,application/x-hwp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-                                    <div class="form-text">Supported formats: HWP, DOC, DOCX</div>
+                                           accept=".hwp,.hwpx,.doc,.docx,application/haansofthwp,application/x-hwp,application/vnd.hancom.hwpx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                                    <div class="form-text">Supported formats: HWP, HWPX, DOC, DOCX</div>
                                 </div>
                                 
                                 <div class="mb-3">
                                     <label for="targetFormat" class="form-label">Target Format</label>
                                     <select name="targetFormat" id="targetFormat" class="form-select" required>
                                         <option value="">-- Select Format --</option>
-                                        <option value="txt">Plain Text (TXT)</option>
-                                        <option value="pdf">PDF Document</option>
-                                        <option value="docx">Word Document (DOCX)</option>
+                                        <option id="docx-option" value="docx">Word Document (DOCX)</option>
+                                        <option id="hwp-option" value="hwp">Hangul Word Processor (HWP)</option>
+                                        <option id="hwpx-option" value="hwpx">Hangul Word Processor (HWPX)</option>
                                     </select>
                                 </div>
                                 
@@ -45,24 +45,24 @@
                     
                     <div class="card mt-4">
                         <div class="card-header">
-                            <h5 class="mb-0">Supported File Types</h5>
+                            <h5 class="mb-0">Supported Conversions</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <h6>Input Formats</h6>
+                                    <h6>HWP/HWPX to DOCX</h6>
                                     <ul>
-                                        <li>HWP - Hangul Word Processor</li>
-                                        <li>DOC - Microsoft Word (97-2003)</li>
-                                        <li>DOCX - Microsoft Word (2007+)</li>
+                                        <li>Convert Hangul Word Processor files to Microsoft Word format</li>
+                                        <li>Preserves formatting, images, and tables</li>
+                                        <li>Compatible with all modern word processors</li>
                                     </ul>
                                 </div>
                                 <div class="col-md-6">
-                                    <h6>Output Formats</h6>
+                                    <h6>DOC/DOCX to HWP/HWPX</h6>
                                     <ul>
-                                        <li>TXT - Plain Text</li>
-                                        <li>PDF - Portable Document Format</li>
-                                        <li>DOCX - Microsoft Word</li>
+                                        <li>Convert Microsoft Word files to Hangul Word Processor format</li>
+                                        <li>Maintains document structure and styling</li>
+                                        <li>Perfect for Korean business and academic environments</li>
                                     </ul>
                                 </div>
                             </div>
@@ -72,5 +72,42 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Show only relevant target formats based on selected file
+        document.getElementById('file').addEventListener('change', function() {
+            const fileName = this.value.toLowerCase();
+            const targetSelect = document.getElementById('targetFormat');
+            
+            // Clear selection
+            targetSelect.value = '';
+            
+            // Hide all options first
+            document.getElementById('docx-option').style.display = 'none';
+            document.getElementById('hwp-option').style.display = 'none';
+            document.getElementById('hwpx-option').style.display = 'none';
+            
+            // Show appropriate options based on file extension
+            if (fileName.endsWith('.hwp')) {
+                // For HWP files, show DOCX as target
+                document.getElementById('docx-option').style.display = 'block';
+            } else if (fileName.endsWith('.hwpx')) {
+                // For HWPX files, show DOCX as target
+                document.getElementById('docx-option').style.display = 'block';
+            } else if (fileName.endsWith('.doc')) {
+                // For DOC files, show HWP as target
+                document.getElementById('hwp-option').style.display = 'block';
+            } else if (fileName.endsWith('.docx')) {
+                // For DOCX files, show HWP and HWPX as targets
+                document.getElementById('hwp-option').style.display = 'block';
+                document.getElementById('hwpx-option').style.display = 'block';
+            } else {
+                // Show all options if no file or unknown extension
+                document.getElementById('docx-option').style.display = 'block';
+                document.getElementById('hwp-option').style.display = 'block';
+                document.getElementById('hwpx-option').style.display = 'block';
+            }
+        });
+    </script>
 </body>
 </html> 
