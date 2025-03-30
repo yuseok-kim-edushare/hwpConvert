@@ -81,7 +81,7 @@ HWP(한글 워드 프로세서) 및 DOC/DOCX(마이크로소프트 워드) 파�
 ## 감사의 말
 
 - HWP 파일 처리를 위한 [hwplib](https://github.com/neolord0/hwplib)
-  - 또한 hwp(한글 워드 프로세서)를 개발한 [한컴](https://www.hancom.com)에 감사드립니다.
-    본 프로젝트는 한컴의 공개 참조 문서인 hwp/x 형식을 기반으로 한 hwplib에 의존하고 있습니다.
+  - 또한 hwp(한글 워드 프로세서)를 개발한 [한글과컴퓨터](https://www.hancom.com)에 감사드립니다.
+    본 프로젝트는 한컴의 hwp/x 형식에 대한 공개 표준 문서 기반으로 한 hwplib에 의존하고 있습니다.
 - 프레임워크를 위한 [Spring Boot](https://spring.io/projects/spring-boot)
 - UI 컴포넌트를 위한 [Bootstrap](https://getbootstrap.com/) 
