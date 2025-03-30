@@ -34,7 +34,7 @@ A web-based application for converting HWP (Hangul Word Processor) and DOC/DOCX 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/hwpconvert.git
+   git clone https://github.com/yuseok-kim-edushare/hwpconvert.git
    cd hwpconvert
    ```
 
@@ -79,5 +79,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - [hwplib](https://github.com/neolord0/hwplib) for HWP file processing
+  - Also Thanks for [Hancom](https://www.hancom.com) which develope hwp: hangle word processor
+    my project rely on hwplib which based on Hancom's Public opened Reference document hwp/x fromat
 - [Spring Boot](https://spring.io/projects/spring-boot) for the framework
 - [Bootstrap](https://getbootstrap.com/) for the UI components 
