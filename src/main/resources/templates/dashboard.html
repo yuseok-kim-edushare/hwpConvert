@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - HWP Converter</title>
+</head>
+<body>
+    <div th:replace="~{layout :: body}">
+        <div id="content">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h1 class="mb-3">Welcome, <span th:text="${username}">User</span>!</h1>
+                    <p class="lead">Convert your documents quickly and easily with our tools.</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Document Conversion</h5>
+                            <p class="card-text">Convert HWP, DOC, and DOCX files to other formats.</p>
+                            <a href="/convert" class="btn btn-primary">Convert Document</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">User Profile</h5>
+                            <p class="card-text">View and update your user profile and settings.</p>
+                            <a href="#" class="btn btn-outline-primary">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5 class="mb-0">Recent Conversions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <p class="mb-0">You haven't converted any documents yet. 
+                                <a href="/convert" class="alert-link">Convert your first document</a> to get started.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

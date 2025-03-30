@@ -1,1 +1,62 @@
-spring.application.name=hwpConvert
+spring:
+  application:
+    name: hwp-convert
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:mysql://localhost:3306/hwpconvert?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  # Alternative DB Config for MS-SQL
+  # datasource:
+  #   url: jdbc:sqlserver://localhost:1433;databaseName=hwpconvert;trustServerCertificate=true
+  #   username: sa
+  #   password: password
+  #   driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  ## need some more investigation for integrate security option
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  
+  # Thymeleaf Configuration
+  thymeleaf:
+    cache: false
+  
+  # File Upload Configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Server Configuration
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Custom Properties
+conversion:
+  temp-dir: ./temp
+  output-dir: ./output
+
+# Swagger UI Configuration
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

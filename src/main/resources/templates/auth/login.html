@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - HWP Converter</title>
+</head>
+<body>
+    <div th:replace="~{layout :: body}">
+        <div id="content">
+            <div class="row justify-content-center">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0">Login</h4>
+                        </div>
+                        <div class="card-body">
+                            <div th:if="${param.error}" class="alert alert-danger">
+                                Invalid username or password.
+                            </div>
+                            <div th:if="${param.logout}" class="alert alert-success">
+                                You have been logged out.
+                            </div>
+                            <form th:action="@{/login}" method="post">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" name="username" id="username" class="form-control" required autofocus />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input type="password" name="password" id="password" class="form-control" required />
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" name="remember-me" id="remember-me" class="form-check-input" />
+                                    <label for="remember-me" class="form-check-label">Remember me</label>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Login</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="card-footer text-center">
+                            <span>Don't have an account? </span>
+                            <a th:href="@{/register}" class="text-decoration-none">Register</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
