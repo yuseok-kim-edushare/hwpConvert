@@ -23,14 +23,12 @@ import pe.yuseok.kim.hwpconvert.repository.DocumentRepository;
 import pe.yuseok.kim.hwpconvert.repository.UserRepository;
 import pe.yuseok.kim.hwpconvert.service.conversion.ConversionStrategyFactory;
 import pe.yuseok.kim.hwpconvert.service.conversion.ConversionStrategy;
-import pe.yuseok.kim.hwpconvert.util.FileUtils;
 
 @Slf4j
 @Service
 public class ConversionService {
 
     private final QueueService queueService;
-    private final FileUtils fileUtils;
     private final ConversionStrategyFactory conversionStrategyFactory;
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
@@ -43,12 +41,10 @@ public class ConversionService {
     
     public ConversionService(
             @Lazy QueueService queueService, 
-            FileUtils fileUtils,
             ConversionStrategyFactory conversionStrategyFactory,
             DocumentRepository documentRepository,
             UserRepository userRepository) {
         this.queueService = queueService;
-        this.fileUtils = fileUtils;
         this.conversionStrategyFactory = conversionStrategyFactory;
         this.documentRepository = documentRepository;
         this.userRepository = userRepository;

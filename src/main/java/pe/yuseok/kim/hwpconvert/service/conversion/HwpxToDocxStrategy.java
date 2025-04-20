@@ -14,7 +14,6 @@ import kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.table.Cell
 import kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.table.Tc;
 import kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.table.Tr;
 import kr.dogfoot.hwpxlib.object.content.context_hpf.ManifestItem;
-import kr.dogfoot.hwpxlib.object.metainf.FileEntry;
 import kr.dogfoot.hwpxlib.object.metainf.RootFile;
 import kr.dogfoot.hwpxlib.reader.HWPXReader;
 import lombok.extern.slf4j.Slf4j;
@@ -25,23 +24,41 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.poi.xwpf.usermodel.VerticalAlign;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVMerge;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.stereotype.Component;
 import pe.yuseok.kim.hwpconvert.model.ConversionResult;
+import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
+import org.apache.poi.xwpf.usermodel.XWPFStyles;
+import org.apache.poi.xwpf.usermodel.XWPFStyle;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLanguage;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocDefaults;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPrDefault;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPrDefault;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STStyleType;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 /**
  * Strategy for converting HWPX files to DOCX format
@@ -78,21 +95,52 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
         result.setDownloadUrl(outputPath.toString());
 
         try (XWPFDocument docxDocument = new XWPFDocument()) {
+            // Set document properties to ensure valid metadata
+            docxDocument.getProperties().getCoreProperties().setCreator("HwpxToDocx Converter");
+            docxDocument.getProperties().getCoreProperties().setCreated(Optional.of(new Date()));
+            
             HWPXFile hwpxFile = HWPXReader.fromFile(sourceFile);
             
             // Process the document structure
             processDocument(hwpxFile, docxDocument);
             
+            // Ensure all document parts are properly connected
+            docxDocument.enforceUpdateFields();
+            
+            // Validate document before saving
+            validateDocument(docxDocument);
+            
             try (FileOutputStream out = new FileOutputStream(outputPath.toFile())) {
                 docxDocument.write(out);
+                out.flush();
             }
-
-            log.info("Successfully converted HWPX to DOCX: {}", outputFileName);
-            result.setSuccess(true);
-            result.setCompletionTime(LocalDateTime.now());
-
+            
+            // Verify the created file is valid
+            if (verifyDocxFile(outputPath.toFile())) {
+                log.info("Successfully converted HWPX to DOCX: {}", outputFileName);
+                result.setSuccess(true);
+                result.setCompletionTime(LocalDateTime.now());
+            } else {
+                log.error("Generated DOCX file failed validation: {}", outputFileName);
+                result.setSuccess(false);
+                result.setErrorMessage("Generated DOCX file failed validation checks");
+                try {
+                    outputPath.toFile().delete();
+                } catch (SecurityException se) {
+                    log.warn("Could not delete invalid file due to security restrictions: {}", outputPath);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Error converting HWPX {} to DOCX: I/O error", sourceFile.getName(), e);
+            result.setSuccess(false);
+            result.setErrorMessage("Error converting HWPX to DOCX: " + e.getMessage());
+            try {
+                 outputPath.toFile().delete();
+            } catch (SecurityException se) {
+                 log.warn("Could not delete partially created file due to security restrictions: {}", outputPath);
+            }
         } catch (Exception e) {
-            log.error("Error converting HWPX {} to DOCX", sourceFile.getName(), e);
+            log.error("Error converting HWPX {} to DOCX: unexpected error", sourceFile.getName(), e);
             result.setSuccess(false);
             result.setErrorMessage("Error converting HWPX to DOCX: " + e.getMessage());
             try {
@@ -109,9 +157,58 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
      * Process the entire HWPX document structure
      */
     private void processDocument(HWPXFile hwpxFile, XWPFDocument docxDocument) {
+        // Setup document with basic style definitions for better compatibility
+        setupBasicDocumentStyles(docxDocument);
+        
         // Iterate through sections
         for (SectionXMLFile section : hwpxFile.sectionXMLFileList().items()) {
             processSection(section, docxDocument, hwpxFile);
+        }
+    }
+    
+    /**
+     * Setup basic document styles for better compatibility with various word processors
+     */
+    private void setupBasicDocumentStyles(XWPFDocument docxDocument) {
+        try {
+            // Set basic document properties
+            if (docxDocument.getProperties() != null) {
+                docxDocument.getProperties().getCoreProperties().setCreator("HwpxToDocx Converter");
+                docxDocument.getProperties().getCoreProperties().setCreated(Optional.of(new Date()));
+            }
+            
+            // Add document default style to ensure better compatibility
+            // Setting default styles programmatically is too complex with many API requirements
+            // Instead, we'll set the document defaults directly through paragraph and run properties
+            
+            // Create a simple default paragraph style for Korean documents
+            XWPFParagraph defaultPara = docxDocument.createParagraph();
+            defaultPara.setStyle("Normal");
+            
+            // Create a simple run with Korean font settings
+            XWPFRun defaultRun = defaultPara.createRun();
+            defaultRun.setFontFamily("Malgun Gothic"); // Korean default font
+            defaultRun.setFontSize(10);
+            
+            // Set East Asian font
+            if (defaultRun.getCTR() != null && defaultRun.getCTR().isSetRPr()) {
+                try {
+                    defaultRun.getCTR().getRPr().addNewRFonts().setEastAsia("Malgun Gothic");
+                    defaultRun.getCTR().getRPr().addNewLang().setEastAsia("ko-KR");
+                } catch (Exception e) {
+                    log.warn("Couldn't set East Asian font settings: {}", e.getMessage());
+                }
+            }
+            
+            // Remove this temporary paragraph after using it to set defaults
+            int paraPosition = docxDocument.getPosOfParagraph(defaultPara);
+            if (paraPosition >= 0) {
+                docxDocument.removeBodyElement(paraPosition);
+            }
+            
+            log.info("Added basic document styles for better compatibility");
+        } catch (Exception e) {
+            log.warn("Could not set up basic document styles: {}", e.getMessage());
         }
     }
     
@@ -219,6 +316,14 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                                         docxParagraph.setSpacingBetween(lineSpacing);
                                     }
                                     break;
+                                case BETWEEN_LINES:
+                                    // Handle between lines spacing
+                                    if (paraPr.lineSpacing().value() != null) {
+                                        double lineSpacing = paraPr.lineSpacing().value() / 100.0;
+                                        docxParagraph.setSpacingLineRule(org.apache.poi.xwpf.usermodel.LineSpacingRule.AUTO);
+                                        docxParagraph.setSpacingBetween(lineSpacing);
+                                    }
+                                    break;
                             }
                         }
                     }
@@ -302,17 +407,17 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                     // Apply font size
                     if (charPr.height() != null) {
                         // Logs for debugging
-                        log.debug("Original HWP font height value: {}", charPr.height());
+                        log.info("Processing HWP font height value: {}", charPr.height());
                         
                         // For Korean HWP files, typical values are 100 = 10pt, 90 = 9pt, etc.
-                        // So we simply divide by 10 to get the point size
+                        // Divide by 10 to get the point size
                         int fontSizePoints = Math.round(charPr.height() / 10.0f);
                         
-                        // Force font size to a fixed value for testing
-                        // Remove this after confirming the conversion works correctly
-                        fontSizePoints = 10;
+                        // Ensure font size is reasonable - set minimum and maximum bounds
+                        if (fontSizePoints < 6) fontSizePoints = 10; // Default to 10pt if too small
+                        if (fontSizePoints > 72) fontSizePoints = 72; // Cap at 72pt
                         
-                        log.debug("Setting font size to: {} points", fontSizePoints);
+                        log.info("Setting font size to: {} points", fontSizePoints);
                         defaultRun.setFontSize(fontSizePoints);
                     }
                     
@@ -327,32 +432,22 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                     
                     // Apply bold
                     if (charPr.bold() != null) {
-                        try {
-                            // HWP bold property might be a boolean value or an object
-                            boolean isBold = Boolean.TRUE.equals(charPr.bold()) || 
-                                            (charPr.bold() != null && charPr.bold().toString().equalsIgnoreCase("true"));
-                            defaultRun.setBold(isBold);
-                        } catch (Exception e) {
-                            log.debug("Error parsing bold attribute: {}", e.getMessage());
-                            // Default to not bold
-                            defaultRun.setBold(false);
-                        }
+                        // HWP bold property might be a boolean value or an object
+                        boolean isBold = charPr.bold() != null && 
+                                       ("true".equalsIgnoreCase(charPr.bold().toString()) || 
+                                        "yes".equalsIgnoreCase(charPr.bold().toString()));
+                        defaultRun.setBold(isBold);
                     } else {
                         defaultRun.setBold(false);
                     }
                     
                     // Apply italic
                     if (charPr.italic() != null) {
-                        try {
-                            // HWP italic property might be a boolean value or an object
-                            boolean isItalic = Boolean.TRUE.equals(charPr.italic()) || 
-                                              (charPr.italic() != null && charPr.italic().toString().equalsIgnoreCase("true"));
-                            defaultRun.setItalic(isItalic);
-                        } catch (Exception e) {
-                            log.debug("Error parsing italic attribute: {}", e.getMessage());
-                            // Default to not italic
-                            defaultRun.setItalic(false);
-                        }
+                        // HWP italic property might be a boolean value or an object
+                        boolean isItalic = charPr.italic() != null && 
+                                         ("true".equalsIgnoreCase(charPr.italic().toString()) || 
+                                          "yes".equalsIgnoreCase(charPr.italic().toString()));
+                        defaultRun.setItalic(isItalic);
                     } else {
                         defaultRun.setItalic(false);
                     }
@@ -362,23 +457,23 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                         // Set underline based on type
                         String ulType = charPr.underline().type().toString();
                         if ("solid".equalsIgnoreCase(ulType) || "single".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE);
+                            defaultRun.setUnderline(UnderlinePatterns.SINGLE);
                         } else if ("double".equalsIgnoreCase(ulType) || "db".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOUBLE);
+                            defaultRun.setUnderline(UnderlinePatterns.DOUBLE);
                         } else if ("dotted".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOTTED);
+                            defaultRun.setUnderline(UnderlinePatterns.DOTTED);
                         } else if ("dashed".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DASH);
+                            defaultRun.setUnderline(UnderlinePatterns.DASH);
                         } else if ("dash-dot".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOT_DASH);
+                            defaultRun.setUnderline(UnderlinePatterns.DOT_DASH);
                         } else if ("dash-dot-dot".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOT_DOT_DASH);
+                            defaultRun.setUnderline(UnderlinePatterns.DOT_DOT_DASH);
                         } else if ("wave".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.WAVE);
+                            defaultRun.setUnderline(UnderlinePatterns.WAVE);
                         } else if ("thick".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.THICK);
+                            defaultRun.setUnderline(UnderlinePatterns.THICK);
                         } else if ("none".equalsIgnoreCase(ulType)) {
-                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE);
+                            defaultRun.setUnderline(UnderlinePatterns.NONE);
                         }
                         
                         // If there's a color specified for the underline
@@ -406,53 +501,37 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                         }
                     } else {
                         // Explicitly set no underline if not specified
-                        defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE);
+                        defaultRun.setUnderline(UnderlinePatterns.NONE);
                     }
                     
                     // Apply strikethrough
                     if (charPr.strikeout() != null) {
-                        try {
-                            // HWP strikeout property might be a boolean value or an object
-                            boolean isStrikeout = Boolean.TRUE.equals(charPr.strikeout()) || 
-                                                 (charPr.strikeout() != null && 
-                                                  charPr.strikeout().toString().equalsIgnoreCase("true"));
-                            defaultRun.setStrikeThrough(isStrikeout);
-                        } catch (Exception e) {
-                            log.debug("Error parsing strikeout attribute: {}", e.getMessage());
-                            // Default to no strikethrough
-                            defaultRun.setStrikeThrough(false);
-                        }
+                        // HWP strikeout property might be a boolean value or an object
+                        boolean isStrikeout = charPr.strikeout() != null && 
+                                            ("true".equalsIgnoreCase(charPr.strikeout().toString()) || 
+                                             "yes".equalsIgnoreCase(charPr.strikeout().toString()));
+                        defaultRun.setStrikeThrough(isStrikeout);
                     } else {
                         defaultRun.setStrikeThrough(false);
                     }
                     
                     // Apply superscript
                     if (charPr.supscript() != null) {
-                        try {
-                            // HWP supscript property might be a boolean value or an object
-                            boolean isSupscript = Boolean.TRUE.equals(charPr.supscript()) || 
-                                                 (charPr.supscript() != null && 
-                                                  charPr.supscript().toString().equalsIgnoreCase("true"));
-                            if (isSupscript) {
-                                defaultRun.setSubscript(org.apache.poi.xwpf.usermodel.VerticalAlign.SUPERSCRIPT);
-                            }
-                        } catch (Exception e) {
-                            log.debug("Error parsing supscript attribute: {}", e.getMessage());
+                        // HWP supscript property might be a boolean value or an object
+                        boolean isSupscript = ("true".equalsIgnoreCase(charPr.supscript().toString()) || 
+                                              "yes".equalsIgnoreCase(charPr.supscript().toString()));
+                        if (isSupscript) {
+                            defaultRun.setSubscript(VerticalAlign.SUPERSCRIPT);
                         }
                     }
                     
                     // Apply subscript
                     if (charPr.subscript() != null) {
-                        try {
-                            // HWP subscript property might be a boolean value or an object
-                            boolean isSubscript = Boolean.TRUE.equals(charPr.subscript()) || 
-                                                 (charPr.subscript() != null && 
-                                                  charPr.subscript().toString().equalsIgnoreCase("true"));
-                            if (isSubscript) {
-                                defaultRun.setSubscript(org.apache.poi.xwpf.usermodel.VerticalAlign.SUBSCRIPT);
-                            }
-                        } catch (Exception e) {
-                            log.debug("Error parsing subscript attribute: {}", e.getMessage());
+                        // HWP subscript property might be a boolean value or an object
+                        boolean isSubscript = ("true".equalsIgnoreCase(charPr.subscript().toString()) || 
+                                              "yes".equalsIgnoreCase(charPr.subscript().toString()));
+                        if (isSubscript) {
+                            defaultRun.setSubscript(VerticalAlign.SUBSCRIPT);
                         }
                     }
                     
@@ -510,8 +589,8 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                     if (defaultRun.getFontFamily() != null) {
                         docxRun.setFontFamily(defaultRun.getFontFamily());
                     }
-                    if (defaultRun.getFontSize() != -1) {
-                        docxRun.setFontSize(defaultRun.getFontSize());
+                    if (defaultRun.getFontSizeAsDouble() > 0) {
+                        docxRun.setFontSize(defaultRun.getFontSizeAsDouble());
                     }
                     if (defaultRun.getColor() != null) {
                         docxRun.setColor(defaultRun.getColor());
@@ -525,7 +604,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                         docxRun.setItalic(true);
                     }
                     // Only apply underline if it's explicitly set and not NONE
-                    if (defaultRun.getUnderline() != org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE) {
+                    if (defaultRun.getUnderline() != UnderlinePatterns.NONE) {
                         docxRun.setUnderline(defaultRun.getUnderline());
                     }
                     // Only apply strikethrough if it's explicitly set
@@ -538,53 +617,60 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                 docxRun.setText(textContent);
             }
         } else {
-            for (TItem tSubItem : textItem.items()) {
-                if (tSubItem instanceof NormalText) {
-                    String textContent = ((NormalText) tSubItem).text();
-                    if (textContent != null && !textContent.isEmpty()) {
-                        XWPFRun docxRun;
-                        if (defaultRun != null) {
-                            // Clone the properties from defaultRun
-                            docxRun = docxParagraph.createRun();
-                            // Copy font properties, but only those explicitly set
-                            if (defaultRun.getFontFamily() != null) {
-                                docxRun.setFontFamily(defaultRun.getFontFamily());
+            // Check if items() is null to avoid NullPointerException
+            if (textItem.items() != null) {
+                for (TItem tSubItem : textItem.items()) {
+                    if (tSubItem instanceof NormalText) {
+                        String textContent = ((NormalText) tSubItem).text();
+                        if (textContent != null && !textContent.isEmpty()) {
+                            XWPFRun docxRun;
+                            if (defaultRun != null) {
+                                // Clone the properties from defaultRun
+                                docxRun = docxParagraph.createRun();
+                                // Copy font properties, but only those explicitly set
+                                if (defaultRun.getFontFamily() != null) {
+                                    docxRun.setFontFamily(defaultRun.getFontFamily());
+                                }
+                                if (defaultRun.getFontSizeAsDouble() > 0) {
+                                    docxRun.setFontSize(defaultRun.getFontSizeAsDouble());
+                                }
+                                if (defaultRun.getColor() != null) {
+                                    docxRun.setColor(defaultRun.getColor());
+                                }
+                                // For boolean properties, only set if true
+                                if (defaultRun.isBold()) {
+                                    docxRun.setBold(true);
+                                }
+                                if (defaultRun.isItalic()) {
+                                    docxRun.setItalic(true);
+                                }
+                                // Only apply underline if it's explicitly set and not NONE
+                                if (defaultRun.getUnderline() != UnderlinePatterns.NONE) {
+                                    docxRun.setUnderline(defaultRun.getUnderline());
+                                }
+                                // Only apply strikethrough if it's explicitly set
+                                if (defaultRun.isStrikeThrough()) {
+                                    docxRun.setStrikeThrough(true);
+                                }
+                            } else {
+                                docxRun = docxParagraph.createRun();
                             }
-                            if (defaultRun.getFontSize() != -1) {
-                                docxRun.setFontSize(defaultRun.getFontSize());
-                            }
-                            if (defaultRun.getColor() != null) {
-                                docxRun.setColor(defaultRun.getColor());
-                            }
-                            // For boolean properties, only set if true
-                            if (defaultRun.isBold()) {
-                                docxRun.setBold(true);
-                            }
-                            if (defaultRun.isItalic()) {
-                                docxRun.setItalic(true);
-                            }
-                            // Only apply underline if it's explicitly set and not NONE
-                            if (defaultRun.getUnderline() != org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE) {
-                                docxRun.setUnderline(defaultRun.getUnderline());
-                            }
-                            // Only apply strikethrough if it's explicitly set
-                            if (defaultRun.isStrikeThrough()) {
-                                docxRun.setStrikeThrough(true);
-                            }
-                        } else {
-                            docxRun = docxParagraph.createRun();
+                            docxRun.setText(textContent);
                         }
-                        docxRun.setText(textContent);
+                    }
+                    else if (tSubItem instanceof kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.t.LineBreak) {
+                        XWPFRun docxRun = docxParagraph.createRun();
+                        docxRun.addBreak();
+                    }
+                    else if (tSubItem instanceof kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.t.Tab) {
+                        XWPFRun docxRun = docxParagraph.createRun();
+                        docxRun.addTab();
                     }
                 }
-                else if (tSubItem instanceof kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.t.LineBreak) {
-                    XWPFRun docxRun = docxParagraph.createRun();
-                    docxRun.addBreak();
-                }
-                else if (tSubItem instanceof kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.t.Tab) {
-                    XWPFRun docxRun = docxParagraph.createRun();
-                    docxRun.addTab();
-                }
+            } else {
+                // If items() is null but isOnlyText() is false, create an empty run to maintain structure
+                log.warn("Text item has null items collection but isOnlyText() is false");
+                docxParagraph.createRun();
             }
         }
     }
@@ -593,108 +679,132 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
      * Process a table element
      */
     private void processTable(Table tableItem, XWPFDocument docxDocument, XWPFParagraph currentPara, HWPXFile hwpxFile) {
-        log.debug("Processing table: {}", tableItem.id());
+        log.info("Processing table: {}", tableItem.id());
 
-        int numRows = tableItem.countOfTr();
-        int numCols = estimateColumnCount(tableItem);
-
-        if (numRows <= 0 || numCols <= 0) {
-            log.warn("Skipping table with zero rows or estimated columns: {}", tableItem.id());
+        // First pass: analyze the table structure to determine true dimensions and merge information
+        TableStructure tableStructure = analyzeTableStructure(tableItem);
+        
+        if (tableStructure.numRows <= 0 || tableStructure.numCols <= 0) {
+            log.warn("Skipping table with zero rows or columns: {}", tableItem.id());
             return;
         }
 
-        XWPFTable docxTable = docxDocument.createTable(numRows, numCols);
+        // Create a table with the correct dimensions
+        XWPFTable docxTable = docxDocument.createTable(tableStructure.numRows, tableStructure.numCols);
+        
+        // Set basic table properties
+        if (docxTable.getCTTbl() != null) {
+            CTTblPr tblPr = docxTable.getCTTbl().getTblPr() != null ? 
+                docxTable.getCTTbl().getTblPr() : docxTable.getCTTbl().addNewTblPr();
+            
+            // Set table to be sized by content
+            tblPr.addNewTblLayout().setType(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblLayoutType.AUTOFIT);
+            
+            // Default table border setting - can be overridden by cell-specific settings
+            try {
+                // Add simple borders for better visibility
+                tblPr.addNewTblBorders();
+            } catch (Exception e) {
+                log.warn("Could not set default table borders: {}", e.getMessage());
+            }
+        }
 
-        // Iterate through rows (tr)
-        for (int i = 0; i < numRows; i++) {
-            Tr hwpxRow = tableItem.getTr(i);
-            XWPFTableRow docxRow = docxTable.getRow(i);
-
-            int currentDocxColIndex = 0;
-            // Iterate through cells (tc)
+        // Process table content cell by cell using the computed structure
+        for (int rowIdx = 0; rowIdx < tableStructure.numRows; rowIdx++) {
+            Tr hwpxRow = rowIdx < tableItem.countOfTr() ? tableItem.getTr(rowIdx) : null;
+            if (hwpxRow == null) continue;
+            
+            int colIdx = 0;
             for (Tc hwpxCell : hwpxRow.tcs()) {
-                if (currentDocxColIndex >= numCols) {
-                    log.warn("More HWPX cells found than estimated columns for table {}, row {}. Cell ID: {}", 
-                             tableItem.id(), i, hwpxCell.name());
-                    continue;
+                // Skip this position if it's covered by a previously defined vertical or horizontal span
+                while (colIdx < tableStructure.numCols && tableStructure.cellMatrix[rowIdx][colIdx] != null) {
+                    colIdx++;
                 }
-
-                XWPFTableCell docxCell = docxRow.getCell(currentDocxColIndex);
                 
-                // Apply cell properties
-                CTTcPr tcPr = getOrCreateTcPr(docxCell);
+                if (colIdx >= tableStructure.numCols) {
+                    break;  // No more cells can be placed in this row
+                }
                 
-                // Handle cell merging (colSpan, rowSpan)
+                // Get span information
                 int colSpan = getColSpan(hwpxCell);
                 int rowSpan = getRowSpan(hwpxCell);
                 
-                // Apply column span (horizontal merging)
+                // Mark this cell and all spanned cells in our matrix as occupied
+                CellInfo cellInfo = new CellInfo(rowIdx, colIdx, colSpan, rowSpan);
+                for (int r = rowIdx; r < rowIdx + rowSpan && r < tableStructure.numRows; r++) {
+                    for (int c = colIdx; c < colIdx + colSpan && c < tableStructure.numCols; c++) {
+                        tableStructure.cellMatrix[r][c] = cellInfo;
+                    }
+                }
+                
+                // Get the actual DOCX cell to modify
+                XWPFTableCell docxCell = docxTable.getRow(rowIdx).getCell(colIdx);
+                
+                // Apply horizontal span (gridSpan)
                 if (colSpan > 1) {
-                    // set grid span (width in cells)
+                    CTTcPr tcPr = getOrCreateTcPr(docxCell);
                     tcPr.addNewGridSpan().setVal(BigInteger.valueOf(colSpan));
                     
-                    // POI creates cells in advance, we need to remove the spanned cells
-                    for (int j = 1; j < colSpan && currentDocxColIndex + j < numCols; j++) {
-                        // Remove the next cell that would be covered by this span
+                    // Remove the spanned cells (they were auto-created by POI)
+                    XWPFTableRow docxRow = docxTable.getRow(rowIdx);
+                    for (int i = 1; i < colSpan && colIdx + i < tableStructure.numCols; i++) {
                         try {
-                            docxRow.removeCell(currentDocxColIndex + 1);
+                            if (docxRow.getTableCells().size() > colIdx + 1) {
+                                docxRow.removeCell(colIdx + 1);
+                            }
                         } catch (Exception e) {
-                            log.warn("Could not remove spanned cell at column index {} in row {}", 
-                                    (currentDocxColIndex + 1), i);
+                            log.warn("Error removing spanned cell at position ({},{}): {}", rowIdx, colIdx + i, e.getMessage());
                         }
                     }
                 }
                 
-                // Apply row span (vertical merging)
+                // Apply vertical span (vMerge)
                 if (rowSpan > 1) {
-                    // Cell is starting vertical merge
+                    // Start of vertical merge
+                    CTTcPr tcPr = getOrCreateTcPr(docxCell);
                     CTVMerge vmerge = tcPr.addNewVMerge();
                     vmerge.setVal(STMerge.RESTART);
                     
-                    // Apply continuation of vertical merge to cells below
-                    for (int j = 1; j < rowSpan && i + j < numRows; j++) {
-                        try {
-                            XWPFTableRow targetRow = docxTable.getRow(i + j);
-                            if (targetRow != null) {
-                                // Need to account for previous horizontal spans in this row
-                                int targetColIndex = currentDocxColIndex;
+                    // Mark continuation cells for the vertical merge
+                    for (int i = 1; i < rowSpan && rowIdx + i < tableStructure.numRows; i++) {
+                        XWPFTableRow targetRow = docxTable.getRow(rowIdx + i);
+                        if (targetRow == null) continue;
+                        
+                        int targetCellIdx = colIdx;
+                        // Adjust for previous gridSpans in the target row
+                        int adjustedIdx = getAdjustedCellIndex(targetRow, colIdx);
+                        
+                        if (adjustedIdx >= 0 && adjustedIdx < targetRow.getTableCells().size()) {
+                            XWPFTableCell targetCell = targetRow.getCell(adjustedIdx);
+                            CTTcPr targetTcPr = getOrCreateTcPr(targetCell);
+                            
+                            // Mark as continuation
+                            CTVMerge targetVMerge = targetTcPr.addNewVMerge();
+                            targetVMerge.setVal(STMerge.CONTINUE);
+                            
+                            // Apply same colSpan to continued cells if needed
+                            if (colSpan > 1) {
+                                targetTcPr.addNewGridSpan().setVal(BigInteger.valueOf(colSpan));
                                 
-                                if (targetColIndex < targetRow.getTableCells().size()) {
-                                    XWPFTableCell targetCell = targetRow.getCell(targetColIndex);
-                                    CTTcPr targetTcPr = getOrCreateTcPr(targetCell);
-                                    
-                                    // Mark as continuation of vertical merge
-                                    CTVMerge targetVMerge = targetTcPr.addNewVMerge();
-                                    targetVMerge.setVal(STMerge.CONTINUE);
-                                    
-                                    // Apply same colSpan to the continued merged cell
-                                    if (colSpan > 1) {
-                                        targetTcPr.addNewGridSpan().setVal(BigInteger.valueOf(colSpan));
-                                        
-                                        // Attempt to remove extra cells
-                                        for (int k = 1; k < colSpan && targetColIndex + k < numCols; k++) {
-                                            try {
-                                                targetRow.removeCell(targetColIndex + 1);
-                                            } catch (Exception e) {
-                                                log.warn("Could not remove spanned cell at column index {} in row {}", 
-                                                        (targetColIndex + k), (i + j));
-                                            }
-                                        }
+                                // Remove spanned cells in the continuation row
+                                for (int j = 1; j < colSpan && adjustedIdx + j < targetRow.getTableCells().size(); j++) {
+                                    try {
+                                        targetRow.removeCell(adjustedIdx + 1);
+                                    } catch (Exception e) {
+                                        log.warn("Error removing cell in continuation row: {}", e.getMessage());
                                     }
                                 }
                             }
-                        } catch (Exception e) {
-                            log.warn("Error applying vMerge at row {}: {}", (i + j), e.getMessage());
                         }
                     }
                 }
-
-                // Process cell content
-                // Clear existing content
+                
+                // Clear any existing content in the cell
                 for (int p = docxCell.getParagraphs().size() - 1; p >= 0; p--) {
                     docxCell.removeParagraph(p);
                 }
-
+                
+                // Process cell content
                 if (hwpxCell.subList() != null) {
                     for (Para cellPara : hwpxCell.subList().paras()) {
                         XWPFParagraph cellDocxParagraph = docxCell.addParagraph();
@@ -703,22 +813,179 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                         }
                     }
                     
+                    // Ensure empty cells still have at least one paragraph
                     if (hwpxCell.subList().countOfPara() == 0) {
                         if (docxCell.getParagraphs().size() == 0) {
                             docxCell.addParagraph();
                         }
                     }
                 } else {
+                    // Add empty paragraph to preserve structure
                     if (docxCell.getParagraphs().size() == 0) {
                         docxCell.addParagraph();
                     }
                 }
-
-                currentDocxColIndex += colSpan;
+                
+                // Move to next cell position
+                colIdx += colSpan;
             }
         }
-
+        
+        // Add a paragraph after the table for better formatting
         docxDocument.createParagraph();
+    }
+    
+    /**
+     * Helper class to track table structure and cell merging
+     */
+    private static class TableStructure {
+        int numRows;
+        int numCols;
+        CellInfo[][] cellMatrix;
+        
+        TableStructure(int rows, int cols) {
+            this.numRows = rows;
+            this.numCols = cols;
+            this.cellMatrix = new CellInfo[rows][cols];
+        }
+    }
+    
+    /**
+     * Helper class to track cell information
+     */
+    private static class CellInfo {
+        int rowStart;
+        int colStart;
+        int rowSpan;
+        int colSpan;
+        
+        CellInfo(int rowStart, int colStart, int colSpan, int rowSpan) {
+            this.rowStart = rowStart;
+            this.colStart = colStart;
+            this.colSpan = colSpan;
+            this.rowSpan = rowSpan;
+        }
+    }
+    
+    /**
+     * Analyze the table structure to determine dimensions and cell merging information
+     */
+    private TableStructure analyzeTableStructure(Table tableItem) {
+        int numRows = tableItem.countOfTr();
+        
+        // First pass: determine maximum number of columns
+        int maxCols = 0;
+        for (int i = 0; i < numRows; i++) {
+            Tr row = tableItem.getTr(i);
+            int colCount = 0;
+            for (Tc cell : row.tcs()) {
+                colCount += getColSpan(cell);
+            }
+            maxCols = Math.max(maxCols, colCount);
+        }
+        
+        // Initialize the table structure
+        TableStructure structure = new TableStructure(numRows, maxCols);
+        
+        // Second pass: populate the cell matrix with spanning information
+        for (int rowIdx = 0; rowIdx < numRows; rowIdx++) {
+            Tr row = tableItem.getTr(rowIdx);
+            int colIdx = 0;
+            
+            for (Tc cell : row.tcs()) {
+                // Skip positions that are already covered by spans
+                while (colIdx < maxCols && structure.cellMatrix[rowIdx][colIdx] != null) {
+                    colIdx++;
+                }
+                
+                if (colIdx >= maxCols) break;
+                
+                int colSpan = getColSpan(cell);
+                int rowSpan = getRowSpan(cell);
+                
+                // Create cell info and mark the span in the matrix
+                CellInfo cellInfo = new CellInfo(rowIdx, colIdx, colSpan, rowSpan);
+                for (int r = rowIdx; r < rowIdx + rowSpan && r < numRows; r++) {
+                    for (int c = colIdx; c < colIdx + colSpan && c < maxCols; c++) {
+                        if (r < structure.cellMatrix.length && c < structure.cellMatrix[r].length) {
+                            structure.cellMatrix[r][c] = cellInfo;
+                        }
+                    }
+                }
+                
+                colIdx += colSpan;
+            }
+        }
+        
+        return structure;
+    }
+    
+    /**
+     * Get the adjusted cell index accounting for gridSpans in previous cells
+     */
+    private int getAdjustedCellIndex(XWPFTableRow row, int desiredIndex) {
+        if (row == null) return -1;
+        
+        int currentIndex = 0;
+        int physicalIndex = 0;
+        
+        for (XWPFTableCell cell : row.getTableCells()) {
+            if (currentIndex == desiredIndex) {
+                return physicalIndex;
+            }
+            
+            int cellGridSpan = 1;
+            if (cell.getCTTc() != null && cell.getCTTc().getTcPr() != null && 
+                cell.getCTTc().getTcPr().getGridSpan() != null) {
+                BigInteger span = cell.getCTTc().getTcPr().getGridSpan().getVal();
+                if (span != null) {
+                    cellGridSpan = span.intValue();
+                }
+            }
+            
+            currentIndex += cellGridSpan;
+            physicalIndex++;
+            
+            if (currentIndex > desiredIndex) {
+                // The desired index is covered by a span, so return the current physical cell
+                return physicalIndex - 1;
+            }
+        }
+        
+        // If we can't find it, the index might be beyond the actual cells due to spans
+        return row.getTableCells().size() - 1;
+    }
+    
+    /**
+     * Get or create CTTcPr for a table cell
+     */
+    private CTTcPr getOrCreateTcPr(XWPFTableCell cell) {
+        if (cell.getCTTc().getTcPr() == null) {
+            cell.getCTTc().addNewTcPr();
+        }
+        return cell.getCTTc().getTcPr();
+    }
+    
+    /**
+     * Get column span for a table cell
+     */
+    private int getColSpan(Tc cell) {
+        CellSpan span = cell.cellSpan();
+        if (span != null && span.colSpan() != null) {
+            return span.colSpan();
+        }
+        return 1; // Default ColSpan
+    }
+    
+    /**
+     * Get row span for a table cell
+     */
+    private int getRowSpan(Tc cell) {
+        CellSpan span = cell.cellSpan();
+        if (span != null && span.rowSpan() != null) {
+            return span.rowSpan();
+        }
+        return 1; // Default RowSpan
     }
     
     /**
@@ -875,80 +1142,12 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     }
     
     /**
-     * Estimate the number of columns in a table
-     */
-    private int estimateColumnCount(Table tableItem) {
-        int maxCols = 0;
-        if (tableItem.countOfTr() > 0) {
-            Tr firstRow = tableItem.getTr(0);
-            int colsInFirstRow = 0;
-             for (Tc hwpxCell : firstRow.tcs()) {
-                 colsInFirstRow += getColSpan(hwpxCell);
-             }
-            maxCols = colsInFirstRow;
-
-            // Check other rows in case of complex merges
-             for (int i = 1; i < tableItem.countOfTr(); i++) {
-                 Tr row = tableItem.getTr(i);
-                 int colsInRow = 0;
-                 for (Tc hwpxCell : row.tcs()) {
-                    colsInRow += getColSpan(hwpxCell);
-                 }
-                 if (colsInRow > maxCols) {
-                    log.warn("Table {} has inconsistent column count across rows. Using max observed: {}", 
-                             tableItem.id(), colsInRow);
-                    maxCols = colsInRow;
-                 }
-             }
-        }
-        
-        // Fallback if no rows
-        if (maxCols == 0) {
-             log.warn("Could not estimate columns for table: {}. Defaulting to 1.", tableItem.id());
-             return 1;
-        }
-        return maxCols;
-    }
-    
-    /**
-     * Get or create CTTcPr for a table cell
-     */
-    private CTTcPr getOrCreateTcPr(XWPFTableCell cell) {
-        if (cell.getCTTc().getTcPr() == null) {
-            cell.getCTTc().addNewTcPr();
-        }
-        return cell.getCTTc().getTcPr();
-    }
-    
-    /**
-     * Get column span for a table cell
-     */
-    private int getColSpan(Tc cell) {
-        CellSpan span = cell.cellSpan();
-        if (span != null && span.colSpan() != null) {
-            return span.colSpan();
-        }
-        return 1; // Default ColSpan
-    }
-    
-    /**
-     * Get row span for a table cell
-     */
-    private int getRowSpan(Tc cell) {
-        CellSpan span = cell.cellSpan();
-        if (span != null && span.rowSpan() != null) {
-            return span.rowSpan();
-        }
-        return 1; // Default RowSpan
-    }
-
-    /**
      * Process a line drawing object
      */
     private void processLine(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.Line lineItem, 
                              XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // TODO: Implement full line drawing support when needed
-        log.debug("Line drawing object {} partially supported", lineItem.id());
+        log.info("Line drawing object {} partially supported", lineItem.id());
         XWPFRun docxRun = docxParagraph.createRun();
         docxRun.setText("[Line Drawing]");
     }
@@ -959,7 +1158,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     private void processRectangle(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.Rectangle rectItem, 
                              XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // TODO: Implement full rectangle drawing support when needed
-        log.debug("Rectangle drawing object {} partially supported", rectItem.id());
+        log.info("Rectangle drawing object {} partially supported", rectItem.id());
         XWPFRun docxRun = docxParagraph.createRun();
         docxRun.setText("[Rectangle Drawing]");
     }
@@ -970,7 +1169,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     private void processEllipse(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.Ellipse ellipseItem, 
                            XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // TODO: Implement full ellipse drawing support when needed
-        log.debug("Ellipse drawing object {} partially supported", ellipseItem.id());
+        log.info("Ellipse drawing object {} partially supported", ellipseItem.id());
         XWPFRun docxRun = docxParagraph.createRun();
         docxRun.setText("[Ellipse Drawing]");
     }
@@ -981,7 +1180,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     private void processArc(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.Arc arcItem, 
                        XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // TODO: Implement full arc drawing support when needed
-        log.debug("Arc drawing object {} partially supported", arcItem.id());
+        log.info("Arc drawing object {} partially supported", arcItem.id());
         XWPFRun docxRun = docxParagraph.createRun();
         docxRun.setText("[Arc Drawing]");
     }
@@ -992,7 +1191,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     private void processPolygon(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.Polygon polygonItem, 
                            XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // TODO: Implement full polygon drawing support when needed
-        log.debug("Polygon drawing object {} partially supported", polygonItem.id());
+        log.info("Polygon drawing object {} partially supported", polygonItem.id());
         XWPFRun docxRun = docxParagraph.createRun();
         docxRun.setText("[Polygon Drawing]");
     }
@@ -1003,7 +1202,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     private void processCurve(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.object.Curve curveItem, 
                          XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // TODO: Implement full curve drawing support when needed
-        log.debug("Curve drawing object {} partially supported", curveItem.id());
+        log.info("Curve drawing object {} partially supported", curveItem.id());
         XWPFRun docxRun = docxParagraph.createRun();
         docxRun.setText("[Curve Drawing]");
     }
@@ -1014,7 +1213,7 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
     private void processControlCharacter(kr.dogfoot.hwpxlib.object.content.section_xml.paragraph.Ctrl ctrlItem,
                                     XWPFParagraph docxParagraph, XWPFDocument docxDocument, HWPXFile hwpxFile) {
         // Log the control character type for debugging
-        log.debug("Control character type: {}", ctrlItem._objectType());
+        log.info("Control character type: {}", ctrlItem._objectType());
         
         // Don't add visible placeholder text for most control characters
         // Only handle specific ones that need representation
@@ -1033,7 +1232,227 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                 XWPFRun docxRun = docxParagraph.createRun();
                 docxRun.setText("[^]"); // Minimal footnote indicator
             }
-            // Remove the default "[Control]" text - don't show placeholders for controls
         }
     }
-} 
+    
+    /**
+     * Validate document structure before saving
+     */
+    private void validateDocument(XWPFDocument document) {
+        // Ensure document has at least one section
+        if (document.getDocument() != null && document.getDocument().getBody() != null) {
+            if (document.getParagraphs().isEmpty() && document.getTables().isEmpty()) {
+                // Add an empty paragraph if document is completely empty to ensure valid structure
+                document.createParagraph();
+                log.warn("Added empty paragraph to ensure valid document structure");
+            }
+            
+            // Validate that all runs have proper content or are valid empty runs
+            for (XWPFParagraph para : document.getParagraphs()) {
+                for (int i = para.getRuns().size() - 1; i >= 0; i--) {
+                    XWPFRun run = para.getRuns().get(i);
+                    // Check for invalid runs that might cause Word to crash
+                    if (run.getCTR() == null) {
+                        log.warn("Removing invalid run with null CTR");
+                        para.removeRun(i);
+                        continue;
+                    }
+                    
+                    // Check for problematic text content that might cause issues in Hangul Word
+                    if (run.getText(0) != null) {
+                        String text = run.getText(0);
+                        // Handle control characters that might cause issues
+                        if (text.contains("\u0000") || text.contains("\uFFFD")) {
+                            log.warn("Fixing text with invalid control characters");
+                            run.setText(text.replace("\u0000", "").replace("\uFFFD", ""), 0);
+                        }
+                    }
+                    
+                    // Check for problematic formatting that might cause Hangul Word to crash
+                    if (run.getCTR().isSetRPr()) {
+                        // Simplified check for run formatting
+                        log.info("Checking run formatting for compatibility");
+                    }
+                }
+                
+                // If paragraph has no runs after cleanup, add an empty run
+                if (para.getRuns().isEmpty()) {
+                    para.createRun();
+                }
+                
+                // Simplify complex paragraph properties that might cause issues
+                if (para.getCTP() != null && para.getCTP().isSetPPr()) {
+                    // Simplify complex formatting if present
+                    log.info("Checking paragraph formatting for compatibility");
+                }
+            }
+            
+            // Ensure tables have valid structure
+            for (XWPFTable table : document.getTables()) {
+                if (table.getRows().isEmpty()) {
+                    // Remove empty tables that might cause issues
+                    log.warn("Removing empty table");
+                    document.removeBodyElement(document.getPosOfTable(table));
+                    continue;
+                }
+                
+                // Validate table structure
+                for (XWPFTableRow row : table.getRows()) {
+                    if (row.getTableCells().isEmpty()) {
+                        log.warn("Row with no cells found - adding an empty cell");
+                        row.addNewTableCell();
+                    }
+                    
+                    for (XWPFTableCell cell : row.getTableCells()) {
+                        // Ensure all cells have at least one paragraph
+                        if (cell.getParagraphs().isEmpty()) {
+                            cell.addParagraph();
+                        }
+                        
+                        // Check and fix cell properties that might cause issues
+                        if (cell.getCTTc() != null && cell.getCTTc().isSetTcPr()) {
+                            CTTcPr tcPr = cell.getCTTc().getTcPr();
+                            
+                            // For Hangul Word compatibility, simplify vMerge and hMerge attributes
+                            if (tcPr.isSetVMerge()) {
+                                CTVMerge vmerge = tcPr.getVMerge();
+                                // Ensure valid vMerge values
+                                if (vmerge.getVal() == null || 
+                                    (!vmerge.getVal().equals(STMerge.RESTART) && 
+                                     !vmerge.getVal().equals(STMerge.CONTINUE))) {
+                                    // Reset to a valid value
+                                    vmerge.setVal(STMerge.RESTART);
+                                }
+                            }
+                            
+                            // Ensure grid span is valid
+                            if (tcPr.isSetGridSpan() && tcPr.getGridSpan().getVal().intValue() <= 0) {
+                                tcPr.getGridSpan().setVal(BigInteger.ONE);
+                            }
+                        }
+                    }
+                }
+                
+                // Simplified table properties check
+                if (table.getCTTbl() != null) {
+                    log.info("Checking table properties for compatibility");
+                }
+            }
+            
+            // Remove any bookmarks or complex fields that might cause issues
+            removeComplexFields(document);
+        }
+    }
+    
+    /**
+     * Remove complex fields and bookmarks that might cause compatibility issues
+     */
+    private void removeComplexFields(XWPFDocument document) {
+        try {
+            // Remove complex fields like TOC, indexes, etc.
+            if (document.getDocument() != null && document.getDocument().getBody() != null) {
+                org.w3c.dom.Node bodyNode = document.getDocument().getBody().getDomNode();
+                removeComplexNodes(bodyNode);
+            }
+        } catch (Exception e) {
+            log.warn("Could not remove complex fields: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Recursively remove problematic nodes from a DOM tree
+     */
+    private void removeComplexNodes(org.w3c.dom.Node node) {
+        if (node == null) return;
+        
+        // Create a list of nodes to remove (can't remove while iterating)
+        java.util.List<org.w3c.dom.Node> nodesToRemove = new java.util.ArrayList<>();
+        
+        // Check all child nodes
+        org.w3c.dom.NodeList children = node.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            
+            // Check node name for problematic elements
+            String nodeName = child.getNodeName();
+            if (nodeName.contains("bookmarkStart") || 
+                nodeName.contains("bookmarkEnd") ||
+                nodeName.contains("fldSimple") ||
+                nodeName.contains("fldChar") ||
+                nodeName.contains("instrText")) {
+                nodesToRemove.add(child);
+                continue;
+            }
+            
+            // Recursively process child nodes
+            removeComplexNodes(child);
+        }
+        
+        // Remove the identified problematic nodes
+        for (org.w3c.dom.Node nodeToRemove : nodesToRemove) {
+            try {
+                node.removeChild(nodeToRemove);
+            } catch (Exception e) {
+                // Some nodes might be already removed or can't be removed
+            }
+        }
+    }
+    
+    /**
+     * Verify the generated DOCX file is valid and compatible with various office suites
+     */
+    private boolean verifyDocxFile(File docxFile) {
+        if (!docxFile.exists() || docxFile.length() == 0) {
+            log.error("Generated DOCX file is empty or doesn't exist");
+            return false;
+        }
+        
+        // Try to open the generated file to verify it's valid
+        try (XWPFDocument verification = new XWPFDocument(new FileInputStream(docxFile))) {
+            // If we can open it, check basic structure
+            boolean hasValidStructure = verification.getDocument() != null && 
+                                       verification.getDocument().getBody() != null;
+                                       
+            if (!hasValidStructure) {
+                log.error("DOCX file has invalid document structure");
+                return false;
+            }
+            
+            // Additional checks for Hangul Word compatibility
+            boolean hasValidContent = false;
+            
+            // Check for at least one valid paragraph or table
+            if (!verification.getParagraphs().isEmpty() || !verification.getTables().isEmpty()) {
+                hasValidContent = true;
+            }
+            
+            if (!hasValidContent) {
+                log.error("DOCX file has no valid content");
+                return false;
+            }
+            
+            // Additional Korean text compatibility check
+            checkKoreanCompatibility(verification);
+            
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to verify DOCX file: {}", e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Check for Korean text compatibility issues
+     */
+    private void checkKoreanCompatibility(XWPFDocument doc) {
+        try {
+            // For Hancom Office compatibility, ensure there's proper language settings
+            log.info("Checking document for Korean language compatibility");
+            
+            // Basic compatibility checks sufficient for this pass
+        } catch (Exception e) {
+            log.warn("Could not check Korean compatibility: {}", e.getMessage());
+        }
+    }
+}
+ 

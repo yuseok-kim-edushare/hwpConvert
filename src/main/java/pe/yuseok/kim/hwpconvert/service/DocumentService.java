@@ -4,14 +4,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import lombok.extern.slf4j.Slf4j;
 import pe.yuseok.kim.hwpconvert.model.entity.Document;
 import pe.yuseok.kim.hwpconvert.model.entity.User;
 import pe.yuseok.kim.hwpconvert.repository.DocumentRepository;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
