@@ -327,42 +327,58 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                     
                     // Apply bold
                     if (charPr.bold() != null) {
-                        defaultRun.setBold(true);
+                        try {
+                            // HWP bold property might be a boolean value or an object
+                            boolean isBold = Boolean.TRUE.equals(charPr.bold()) || 
+                                            (charPr.bold() != null && charPr.bold().toString().equalsIgnoreCase("true"));
+                            defaultRun.setBold(isBold);
+                        } catch (Exception e) {
+                            log.debug("Error parsing bold attribute: {}", e.getMessage());
+                            // Default to not bold
+                            defaultRun.setBold(false);
+                        }
+                    } else {
+                        defaultRun.setBold(false);
                     }
                     
                     // Apply italic
                     if (charPr.italic() != null) {
-                        defaultRun.setItalic(true);
+                        try {
+                            // HWP italic property might be a boolean value or an object
+                            boolean isItalic = Boolean.TRUE.equals(charPr.italic()) || 
+                                              (charPr.italic() != null && charPr.italic().toString().equalsIgnoreCase("true"));
+                            defaultRun.setItalic(isItalic);
+                        } catch (Exception e) {
+                            log.debug("Error parsing italic attribute: {}", e.getMessage());
+                            // Default to not italic
+                            defaultRun.setItalic(false);
+                        }
+                    } else {
+                        defaultRun.setItalic(false);
                     }
                     
-                    // Apply underline
-                    if (charPr.underline() != null) {
-                        // Set standard underlining
-                        defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE);
-                        
-                        // If underline has a type property, use it to determine the style
-                        if (charPr.underline().type() != null) {
-                            String ulType = charPr.underline().type().toString();
-                            if ("solid".equalsIgnoreCase(ulType) || "single".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE);
-                            } else if ("double".equalsIgnoreCase(ulType) || "db".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOUBLE);
-                            } else if ("dotted".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOTTED);
-                            } else if ("dashed".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DASH);
-                            } else if ("dash-dot".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOT_DASH);
-                            } else if ("dash-dot-dot".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOT_DOT_DASH);
-                            } else if ("wave".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.WAVE);
-                            } else if ("thick".equalsIgnoreCase(ulType)) {
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.THICK);
-                            } else {
-                                // Default to single if type not recognized
-                                defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE);
-                            }
+                    // Apply underline - only if explicitly enabled
+                    if (charPr.underline() != null && charPr.underline().type() != null) {
+                        // Set underline based on type
+                        String ulType = charPr.underline().type().toString();
+                        if ("solid".equalsIgnoreCase(ulType) || "single".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE);
+                        } else if ("double".equalsIgnoreCase(ulType) || "db".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOUBLE);
+                        } else if ("dotted".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOTTED);
+                        } else if ("dashed".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DASH);
+                        } else if ("dash-dot".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOT_DASH);
+                        } else if ("dash-dot-dot".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.DOT_DOT_DASH);
+                        } else if ("wave".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.WAVE);
+                        } else if ("thick".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.THICK);
+                        } else if ("none".equalsIgnoreCase(ulType)) {
+                            defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE);
                         }
                         
                         // If there's a color specified for the underline
@@ -388,21 +404,56 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                                 }
                             }
                         }
+                    } else {
+                        // Explicitly set no underline if not specified
+                        defaultRun.setUnderline(org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE);
                     }
                     
                     // Apply strikethrough
                     if (charPr.strikeout() != null) {
-                        defaultRun.setStrikeThrough(true);
+                        try {
+                            // HWP strikeout property might be a boolean value or an object
+                            boolean isStrikeout = Boolean.TRUE.equals(charPr.strikeout()) || 
+                                                 (charPr.strikeout() != null && 
+                                                  charPr.strikeout().toString().equalsIgnoreCase("true"));
+                            defaultRun.setStrikeThrough(isStrikeout);
+                        } catch (Exception e) {
+                            log.debug("Error parsing strikeout attribute: {}", e.getMessage());
+                            // Default to no strikethrough
+                            defaultRun.setStrikeThrough(false);
+                        }
+                    } else {
+                        defaultRun.setStrikeThrough(false);
                     }
                     
                     // Apply superscript
                     if (charPr.supscript() != null) {
-                        defaultRun.setSubscript(org.apache.poi.xwpf.usermodel.VerticalAlign.SUPERSCRIPT);
+                        try {
+                            // HWP supscript property might be a boolean value or an object
+                            boolean isSupscript = Boolean.TRUE.equals(charPr.supscript()) || 
+                                                 (charPr.supscript() != null && 
+                                                  charPr.supscript().toString().equalsIgnoreCase("true"));
+                            if (isSupscript) {
+                                defaultRun.setSubscript(org.apache.poi.xwpf.usermodel.VerticalAlign.SUPERSCRIPT);
+                            }
+                        } catch (Exception e) {
+                            log.debug("Error parsing supscript attribute: {}", e.getMessage());
+                        }
                     }
                     
                     // Apply subscript
                     if (charPr.subscript() != null) {
-                        defaultRun.setSubscript(org.apache.poi.xwpf.usermodel.VerticalAlign.SUBSCRIPT);
+                        try {
+                            // HWP subscript property might be a boolean value or an object
+                            boolean isSubscript = Boolean.TRUE.equals(charPr.subscript()) || 
+                                                 (charPr.subscript() != null && 
+                                                  charPr.subscript().toString().equalsIgnoreCase("true"));
+                            if (isSubscript) {
+                                defaultRun.setSubscript(org.apache.poi.xwpf.usermodel.VerticalAlign.SUBSCRIPT);
+                            }
+                        } catch (Exception e) {
+                            log.debug("Error parsing subscript attribute: {}", e.getMessage());
+                        }
                     }
                     
                     break;
@@ -455,14 +506,32 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                 if (defaultRun != null) {
                     // Clone the properties from defaultRun
                     docxRun = docxParagraph.createRun();
-                    // Copy font properties
-                    docxRun.setFontFamily(defaultRun.getFontFamily());
-                    docxRun.setFontSize(defaultRun.getFontSize());
-                    docxRun.setColor(defaultRun.getColor());
-                    docxRun.setBold(defaultRun.isBold());
-                    docxRun.setItalic(defaultRun.isItalic());
-                    docxRun.setUnderline(defaultRun.getUnderline());
-                    docxRun.setStrikeThrough(defaultRun.isStrikeThrough());
+                    // Copy font properties, but only those explicitly set
+                    if (defaultRun.getFontFamily() != null) {
+                        docxRun.setFontFamily(defaultRun.getFontFamily());
+                    }
+                    if (defaultRun.getFontSize() != -1) {
+                        docxRun.setFontSize(defaultRun.getFontSize());
+                    }
+                    if (defaultRun.getColor() != null) {
+                        docxRun.setColor(defaultRun.getColor());
+                    }
+                    // For boolean properties, only set if true 
+                    // This prevents accidentally setting all text as bold, italic, etc.
+                    if (defaultRun.isBold()) {
+                        docxRun.setBold(true);
+                    }
+                    if (defaultRun.isItalic()) {
+                        docxRun.setItalic(true);
+                    }
+                    // Only apply underline if it's explicitly set and not NONE
+                    if (defaultRun.getUnderline() != org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE) {
+                        docxRun.setUnderline(defaultRun.getUnderline());
+                    }
+                    // Only apply strikethrough if it's explicitly set
+                    if (defaultRun.isStrikeThrough()) {
+                        docxRun.setStrikeThrough(true);
+                    }
                 } else {
                     docxRun = docxParagraph.createRun();
                 }
@@ -477,14 +546,31 @@ public class HwpxToDocxStrategy implements ConversionStrategy {
                         if (defaultRun != null) {
                             // Clone the properties from defaultRun
                             docxRun = docxParagraph.createRun();
-                            // Copy font properties
-                            docxRun.setFontFamily(defaultRun.getFontFamily());
-                            docxRun.setFontSize(defaultRun.getFontSize());
-                            docxRun.setColor(defaultRun.getColor());
-                            docxRun.setBold(defaultRun.isBold());
-                            docxRun.setItalic(defaultRun.isItalic());
-                            docxRun.setUnderline(defaultRun.getUnderline());
-                            docxRun.setStrikeThrough(defaultRun.isStrikeThrough());
+                            // Copy font properties, but only those explicitly set
+                            if (defaultRun.getFontFamily() != null) {
+                                docxRun.setFontFamily(defaultRun.getFontFamily());
+                            }
+                            if (defaultRun.getFontSize() != -1) {
+                                docxRun.setFontSize(defaultRun.getFontSize());
+                            }
+                            if (defaultRun.getColor() != null) {
+                                docxRun.setColor(defaultRun.getColor());
+                            }
+                            // For boolean properties, only set if true
+                            if (defaultRun.isBold()) {
+                                docxRun.setBold(true);
+                            }
+                            if (defaultRun.isItalic()) {
+                                docxRun.setItalic(true);
+                            }
+                            // Only apply underline if it's explicitly set and not NONE
+                            if (defaultRun.getUnderline() != org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE) {
+                                docxRun.setUnderline(defaultRun.getUnderline());
+                            }
+                            // Only apply strikethrough if it's explicitly set
+                            if (defaultRun.isStrikeThrough()) {
+                                docxRun.setStrikeThrough(true);
+                            }
                         } else {
                             docxRun = docxParagraph.createRun();
                         }
