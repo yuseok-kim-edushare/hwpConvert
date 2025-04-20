@@ -70,4 +70,33 @@ public class UserService implements UserDetailsService {
             userRepository.save(adminUser);
         }
     }
+    
+    public User updateUserProfile(Long userId, String email, String fullName) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Check if email is already in use by another user
+        if (!user.getEmail().equals(email) && userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already in use by another account");
+        }
+        
+        user.setEmail(email);
+        user.setFullName(fullName);
+        
+        return userRepository.save(user);
+    }
+    
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Verify current password
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 } 

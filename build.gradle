@@ -32,15 +32,13 @@ dependencies {
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 
     // swagger
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:latest'
-    implementation 'org.springframework:spring-webmvc:latest'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
     // https://mvnrepository.com/artifact/kr.dogfoot/hwpxlib
     implementation 'kr.dogfoot:hwpxlib:1.0.5'
     // https://mvnrepository.com/artifact/kr.dogfoot/hwplib
     implementation 'kr.dogfoot:hwplib:1.1.8'
-    // https://mvnrepository.com/artifact/pro.verron.office-stamper/engine
-    implementation 'pro.verron.office-stamper:engine:2.7.0'
+    implementation 'org.apache.poi:poi-ooxml:5.4.1'
 
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'

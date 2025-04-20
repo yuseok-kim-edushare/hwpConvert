@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
+<head>
+    <title>User Profile</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container py-4">
+            <h2 class="mb-4">User Profile</h2>
+            
+            <div class="row">
+                <div class="col-md-8 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5 class="mb-0">Profile Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <form th:action="@{/profile/update}" method="post">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username" th:value="${user.username}" readonly>
+                                    <div class="form-text">Username cannot be changed.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email" name="email" th:value="${user.email}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="fullName" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="fullName" name="fullName" th:value="${user.fullName}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Account Created</label>
+                                    <p class="form-control-static" th:text="${#temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm')}"></p>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">Update Profile</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card shadow mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Security</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Keep your account secure by updating your password regularly.</p>
+                            <a th:href="@{/profile/change-password}" class="btn btn-outline-primary">Change Password</a>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5 class="mb-0">Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">View or manage your document conversions.</p>
+                            <a th:href="@{/documents}" class="btn btn-outline-info">My Documents</a>
+                            <a th:href="@{/convert}" class="btn btn-outline-success mt-2">Convert Document</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
