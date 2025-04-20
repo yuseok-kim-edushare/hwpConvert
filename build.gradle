@@ -30,10 +30,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+    implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect:3.3.0'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
     // swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
+    //hwp(x)libs : on https://github.com/neolord0/hwplib
     // https://mvnrepository.com/artifact/kr.dogfoot/hwpxlib
     implementation 'kr.dogfoot:hwpxlib:1.0.5'
     // https://mvnrepository.com/artifact/kr.dogfoot/hwplib

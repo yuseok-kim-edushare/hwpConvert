@@ -4,7 +4,7 @@
     <title>Document Details</title>
 </head>
 <body>
-    <div layout:fragment="content">
+    <section layout:fragment="content">
         <div class="container py-4">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
@@ -92,7 +92,7 @@
                             <p>Share this link to allow others to download the converted file:</p>
                             <div class="input-group mb-3">
                                 <input type="text" class="form-control" id="shareLink" 
-                                       th:value="${'http://' + #request.serverName + ':' + #request.serverPort + '/documents/download/' + document.downloadToken}" 
+                                       th:value="${serverBaseUrl + '/documents/download/' + document.downloadToken}" 
                                        readonly>
                                 <button class="btn btn-outline-secondary" type="button" onclick="copyShareLink()">
                                     <i class="bi bi-clipboard"></i>
@@ -106,7 +106,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
     
     <th:block layout:fragment="scripts">
         <script>

@@ -29,7 +29,7 @@ A web-based application for converting HWP (Hangul Word Processor) and DOC/DOCX 
 
 - Java 21 JDK
 - MySQL or MS SQL Server
-- Redis server
+- Redis server (I used Microsoft's Garnet Project for this)
 - Maven or Gradle
 
 ## Setup and Installation

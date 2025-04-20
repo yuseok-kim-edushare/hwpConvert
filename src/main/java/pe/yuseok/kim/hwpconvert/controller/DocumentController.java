@@ -13,6 +13,7 @@ import pe.yuseok.kim.hwpconvert.model.entity.Document;
 import pe.yuseok.kim.hwpconvert.model.entity.User;
 import pe.yuseok.kim.hwpconvert.service.DocumentService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -41,7 +42,8 @@ public class DocumentController {
     }
     
     @GetMapping("/{id}")
-    public String viewDocument(@PathVariable Long id, @AuthenticationPrincipal User user, Model model) {
+    public String viewDocument(@PathVariable Long id, @AuthenticationPrincipal User user, 
+                              Model model, HttpServletRequest request) {
         Document document = documentService.getDocumentById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
         
@@ -50,7 +52,14 @@ public class DocumentController {
             return "redirect:/documents?error=unauthorized";
         }
         
+        // Add server info to the model instead of using #request in the template
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+        String baseUrl = "http://" + serverName + ":" + serverPort;
+        
         model.addAttribute("document", document);
+        model.addAttribute("serverBaseUrl", baseUrl);
+        
         return "documents/view";
     }
     

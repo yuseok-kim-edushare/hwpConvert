@@ -54,7 +54,7 @@ public class ConversionService {
         this.userRepository = userRepository;
     }
 
-    public ConversionTask queueConversion(String userId, MultipartFile file, String targetFormat) throws IOException {
+    public ConversionTask queueConversion(String username, MultipartFile file, String targetFormat) throws IOException {
         // Validate file
         String contentType = file.getContentType();
         if (contentType == null || !isSupportedContentType(contentType)) {
@@ -72,7 +72,7 @@ public class ConversionService {
         
         // Create task
         ConversionTask task = ConversionTask.create(
-                userId,
+                username,
                 file.getOriginalFilename(),
                 contentType,
                 targetFormat
@@ -82,8 +82,8 @@ public class ConversionService {
         String tempFilePath = saveToTempDir(file);
         
         // Create document entity and save to database
-        User user = userRepository.findById(Long.parseLong(userId))
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
         
         Document document = new Document();
         document.setOriginalFilename(file.getOriginalFilename());
@@ -207,7 +207,8 @@ public class ConversionService {
     }
     
     private boolean isSupportedContentType(String contentType) {
-        return contentType.equals("application/haansofthwp") || 
+        return contentType.equals("application/haansofthwp") ||
+               contentType.equals("application/haansofthwpx") ||
                contentType.equals("application/x-hwp") ||
                contentType.equals("application/vnd.hancom.hwpx") ||
                contentType.equals("application/msword") ||
@@ -217,6 +218,9 @@ public class ConversionService {
     private String getFormatFromContentType(String contentType) {
         switch (contentType.toLowerCase()) {
             case "application/haansofthwp":
+                return "hwp";
+            case "application/haansofthwpx":
+                return "hwpx";
             case "application/x-hwp":
                 return "hwp";
             case "application/vnd.hancom.hwpx":

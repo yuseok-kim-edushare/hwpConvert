@@ -1,113 +1,113 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Convert Document - HWP Converter</title>
 </head>
 <body>
-    <div th:replace="~{layout :: body}">
-        <div id="content">
-            <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <div class="card shadow">
-                        <div class="card-header bg-primary text-white">
-                            <h4 class="mb-0">Convert Document</h4>
-                        </div>
-                        <div class="card-body">
-                            <form th:action="@{/convert}" method="post" enctype="multipart/form-data">
-                                <div class="mb-3">
-                                    <label for="file" class="form-label">Select Document</label>
-                                    <input type="file" name="file" id="file" class="form-control" required 
-                                           accept=".hwp,.hwpx,.doc,.docx,application/haansofthwp,application/x-hwp,application/vnd.hancom.hwpx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-                                    <div class="form-text">Supported formats: HWP, HWPX, DOC, DOCX</div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="targetFormat" class="form-label">Target Format</label>
-                                    <select name="targetFormat" id="targetFormat" class="form-select" required>
-                                        <option value="">-- Select Format --</option>
-                                        <option id="docx-option" value="docx">Word Document (DOCX)</option>
-                                        <option id="hwp-option" value="hwp">Hangul Word Processor (HWP)</option>
-                                        <option id="hwpx-option" value="hwpx">Hangul Word Processor (HWPX)</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary">Convert</button>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="card-footer">
-                            <p class="mb-0"><strong>Note:</strong> Files are processed asynchronously. You'll be able to download the converted file once it's ready.</p>
-                        </div>
+    <section layout:fragment="content">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Convert Document</h4>
                     </div>
-                    
-                    <div class="card mt-4">
-                        <div class="card-header">
-                            <h5 class="mb-0">Supported Conversions</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>HWP/HWPX to DOCX</h6>
-                                    <ul>
-                                        <li>Convert Hangul Word Processor files to Microsoft Word format</li>
-                                        <li>Preserves formatting, images, and tables</li>
-                                        <li>Compatible with all modern word processors</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>DOC/DOCX to HWP/HWPX</h6>
-                                    <ul>
-                                        <li>Convert Microsoft Word files to Hangul Word Processor format</li>
-                                        <li>Maintains document structure and styling</li>
-                                        <li>Perfect for Korean business and academic environments</li>
-                                    </ul>
-                                </div>
+                    <div class="card-body">
+                        <form th:action="@{/convert}" method="post" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">Select Document</label>
+                                <input type="file" name="file" id="file" class="form-control" required 
+                                       accept=".hwp,.hwpx,.doc,.docx,application/haansofthwp,application/x-hwp,application/vnd.hancom.hwpx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                                <div class="form-text">Supported formats: HWP, HWPX, DOC, DOCX</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="targetFormat" class="form-label">Target Format</label>
+                                <select name="targetFormat" id="targetFormat" class="form-select" required>
+                                    <option value="">-- Select Format --</option>
+                                    <option id="docx-option" value="docx">Word Document (DOCX)</option>
+                                    <option id="hwp-option" value="hwp">Hangul Word Processor (HWP)</option>
+                                    <option id="hwpx-option" value="hwpx">Hangul Word Processor (HWPX)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Convert</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <p class="mb-0"><strong>Note:</strong> Files are processed asynchronously. You'll be able to download the converted file once it's ready.</p>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Supported Conversions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>HWP/HWPX to DOCX</h6>
+                                <ul>
+                                    <li>Convert Hangul Word Processor files to Microsoft Word format</li>
+                                    <li>Preserves formatting, images, and tables</li>
+                                    <li>Compatible with all modern word processors</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>DOC/DOCX to HWP/HWPX</h6>
+                                <ul>
+                                    <li>Convert Microsoft Word files to Hangul Word Processor format</li>
+                                    <li>Maintains document structure and styling</li>
+                                    <li>Perfect for Korean Public Sector and academic environments</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <script>
-        // Show only relevant target formats based on selected file
-        document.getElementById('file').addEventListener('change', function() {
-            const fileName = this.value.toLowerCase();
-            const targetSelect = document.getElementById('targetFormat');
-            
-            // Clear selection
-            targetSelect.value = '';
-            
-            // Hide all options first
-            document.getElementById('docx-option').style.display = 'none';
-            document.getElementById('hwp-option').style.display = 'none';
-            document.getElementById('hwpx-option').style.display = 'none';
-            
-            // Show appropriate options based on file extension
-            if (fileName.endsWith('.hwp')) {
-                // For HWP files, show DOCX as target
-                document.getElementById('docx-option').style.display = 'block';
-            } else if (fileName.endsWith('.hwpx')) {
-                // For HWPX files, show DOCX as target
-                document.getElementById('docx-option').style.display = 'block';
-            } else if (fileName.endsWith('.doc')) {
-                // For DOC files, show HWP as target
-                document.getElementById('hwp-option').style.display = 'block';
-            } else if (fileName.endsWith('.docx')) {
-                // For DOCX files, show HWP and HWPX as targets
-                document.getElementById('hwp-option').style.display = 'block';
-                document.getElementById('hwpx-option').style.display = 'block';
-            } else {
-                // Show all options if no file or unknown extension
-                document.getElementById('docx-option').style.display = 'block';
-                document.getElementById('hwp-option').style.display = 'block';
-                document.getElementById('hwpx-option').style.display = 'block';
-            }
-        });
-    </script>
+    <th:block layout:fragment="scripts">
+        <script>
+            // Show only relevant target formats based on selected file
+            document.getElementById('file').addEventListener('change', function() {
+                const fileName = this.value.toLowerCase();
+                const targetSelect = document.getElementById('targetFormat');
+                
+                // Clear selection
+                targetSelect.value = '';
+                
+                // Hide all options first
+                document.getElementById('docx-option').style.display = 'none';
+                document.getElementById('hwp-option').style.display = 'none';
+                document.getElementById('hwpx-option').style.display = 'none';
+                
+                // Show appropriate options based on file extension
+                if (fileName.endsWith('.hwp')) {
+                    // For HWP files, show DOCX as target
+                    document.getElementById('docx-option').style.display = 'block';
+                } else if (fileName.endsWith('.hwpx')) {
+                    // For HWPX files, show DOCX as target
+                    document.getElementById('docx-option').style.display = 'block';
+                } else if (fileName.endsWith('.doc')) {
+                    // For DOC files, show HWP as target
+                    document.getElementById('hwp-option').style.display = 'block';
+                } else if (fileName.endsWith('.docx')) {
+                    // For DOCX files, show HWP and HWPX as targets
+                    document.getElementById('hwp-option').style.display = 'block';
+                    document.getElementById('hwpx-option').style.display = 'block';
+                } else {
+                    // Show all options if no file or unknown extension
+                    document.getElementById('docx-option').style.display = 'block';
+                    document.getElementById('hwp-option').style.display = 'block';
+                    document.getElementById('hwpx-option').style.display = 'block';
+                }
+            });
+        </script>
+    </th:block>
 </body>
 </html> 

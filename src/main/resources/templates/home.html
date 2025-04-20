@@ -1,89 +1,87 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HWP Converter</title>
 </head>
 <body>
-    <div th:replace="~{layout :: body}">
-        <div id="content" class="text-center">
-            <div class="py-5 bg-light rounded-3 mb-4">
-                <div class="container">
-                    <h1 class="display-4 fw-bold">HWP & DOC Converter</h1>
-                    <p class="lead">Convert HWP and DOC files to various formats easily with our web-based converter.</p>
-                    <hr class="my-4">
-                    <p>Our converter supports various formats including PDF, TXT, and more.</p>
-                    <div class="mt-4">
-                        <a href="/register" class="btn btn-primary btn-lg me-2">Get Started</a>
-                        <a href="/login" class="btn btn-outline-primary btn-lg">Login</a>
+    <section layout:fragment="content" class="text-center">
+        <div class="py-5 bg-light rounded-3 mb-4">
+            <div class="container">
+                <h1 class="display-4 fw-bold">HWP & DOC Converter</h1>
+                <p class="lead">Convert HWP and DOC files to various formats easily with our web-based converter.</p>
+                <hr class="my-4">
+                <p>Our converter supports various formats including PDF, TXT, and more.</p>
+                <div class="mt-4">
+                    <a href="/register" class="btn btn-primary btn-lg me-2">Get Started</a>
+                    <a href="/login" class="btn btn-outline-primary btn-lg">Login</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container py-5">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="card-title">HWP Conversion</h3>
+                            <p class="card-text">Convert HWP files to PDF, TXT, and other formats with high fidelity.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="card-title">DOC/DOCX Conversion</h3>
+                            <p class="card-text">Convert Microsoft Word documents to other formats quickly and easily.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h3 class="card-title">Secure & Fast</h3>
+                            <p class="card-text">Your documents are processed securely and conversions are completed quickly.</p>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="container py-5">
+            <div class="mt-5">
+                <h2 class="text-center mb-4">How It Works</h2>
                 <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <h3 class="card-title">HWP Conversion</h3>
-                                <p class="card-text">Convert HWP files to PDF, TXT, and other formats with high fidelity.</p>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="d-flex flex-column align-items-center">
+                            <div class="display-4 mb-2">1</div>
+                            <h4>Create an Account</h4>
+                            <p class="text-center">Sign up for a free account to get started.</p>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <h3 class="card-title">DOC/DOCX Conversion</h3>
-                                <p class="card-text">Convert Microsoft Word documents to other formats quickly and easily.</p>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="d-flex flex-column align-items-center">
+                            <div class="display-4 mb-2">2</div>
+                            <h4>Upload File</h4>
+                            <p class="text-center">Upload your HWP or DOC/DOCX file.</p>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <h3 class="card-title">Secure & Fast</h3>
-                                <p class="card-text">Your documents are processed securely and conversions are completed quickly.</p>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="d-flex flex-column align-items-center">
+                            <div class="display-4 mb-2">3</div>
+                            <h4>Choose Format</h4>
+                            <p class="text-center">Select your desired output format.</p>
                         </div>
                     </div>
-                </div>
-                
-                <div class="mt-5">
-                    <h2 class="text-center mb-4">How It Works</h2>
-                    <div class="row g-4">
-                        <div class="col-md-3">
-                            <div class="d-flex flex-column align-items-center">
-                                <div class="display-4 mb-2">1</div>
-                                <h4>Create an Account</h4>
-                                <p class="text-center">Sign up for a free account to get started.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex flex-column align-items-center">
-                                <div class="display-4 mb-2">2</div>
-                                <h4>Upload File</h4>
-                                <p class="text-center">Upload your HWP or DOC/DOCX file.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex flex-column align-items-center">
-                                <div class="display-4 mb-2">3</div>
-                                <h4>Choose Format</h4>
-                                <p class="text-center">Select your desired output format.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex flex-column align-items-center">
-                                <div class="display-4 mb-2">4</div>
-                                <h4>Download</h4>
-                                <p class="text-center">Download your converted file.</p>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="d-flex flex-column align-items-center">
+                            <div class="display-4 mb-2">4</div>
+                            <h4>Download</h4>
+                            <p class="text-center">Download your converted file.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 </body>
 </html> 

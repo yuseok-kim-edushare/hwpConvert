@@ -1,109 +1,109 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conversion Status - HWP Converter</title>
 </head>
 <body>
-    <div th:replace="~{layout :: body}">
-        <div id="content">
-            <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <div class="card shadow" id="status-card">
-                        <div class="card-header bg-primary text-white">
-                            <h4 class="mb-0">Conversion Status</h4>
+    <section layout:fragment="content">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow" id="status-card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Conversion Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <input type="hidden" id="taskId" th:value="${taskId}" />
+                        
+                        <div id="pending-status">
+                            <div class="text-center my-5">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <h5>Processing your document...</h5>
+                                <p class="text-muted">This may take a few moments depending on the file size.</p>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <input type="hidden" id="taskId" th:value="${taskId}" />
-                            
-                            <div id="pending-status">
-                                <div class="text-center my-5">
-                                    <div class="spinner-border text-primary mb-3" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <h5>Processing your document...</h5>
-                                    <p class="text-muted">This may take a few moments depending on the file size.</p>
+                        
+                        <div id="complete-status" style="display: none;">
+                            <div class="text-center my-5">
+                                <div class="mb-3">
+                                    <span class="bg-success text-white p-3 rounded-circle">
+                                        <i class="bi bi-check-lg fs-1"></i>
+                                    </span>
                                 </div>
+                                <h5>Conversion Completed!</h5>
+                                <p class="text-muted mb-4">Your file has been successfully converted.</p>
+                                <a href="#" id="download-link" class="btn btn-primary btn-lg">
+                                    Download Converted File
+                                </a>
                             </div>
-                            
-                            <div id="complete-status" style="display: none;">
-                                <div class="text-center my-5">
-                                    <div class="mb-3">
-                                        <span class="bg-success text-white p-3 rounded-circle">
-                                            <i class="bi bi-check-lg fs-1"></i>
-                                        </span>
-                                    </div>
-                                    <h5>Conversion Completed!</h5>
-                                    <p class="text-muted mb-4">Your file has been successfully converted.</p>
-                                    <a href="#" id="download-link" class="btn btn-primary btn-lg">
-                                        Download Converted File
-                                    </a>
+                        </div>
+                        
+                        <div id="failed-status" style="display: none;">
+                            <div class="text-center my-5">
+                                <div class="mb-3 text-danger">
+                                    <i class="bi bi-exclamation-triangle fs-1"></i>
                                 </div>
-                            </div>
-                            
-                            <div id="failed-status" style="display: none;">
-                                <div class="text-center my-5">
-                                    <div class="mb-3 text-danger">
-                                        <i class="bi bi-exclamation-triangle fs-1"></i>
-                                    </div>
-                                    <h5>Conversion Failed</h5>
-                                    <p class="text-muted mb-2">We encountered an error while converting your file.</p>
-                                    <div class="alert alert-danger" id="error-message"></div>
-                                    <a href="/convert" class="btn btn-primary">Try Again</a>
-                                </div>
+                                <h5>Conversion Failed</h5>
+                                <p class="text-muted mb-2">We encountered an error while converting your file.</p>
+                                <div class="alert alert-danger" id="error-message"></div>
+                                <a href="/convert" class="btn btn-primary">Try Again</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const taskId = document.getElementById('taskId').value;
-            let pollingInterval;
-            
-            // Start polling
-            checkStatus();
-            
-            function checkStatus() {
-                fetch(`/convert/status/${taskId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Status update:', data);
-                        
-                        switch(data.status) {
-                            case 'COMPLETED':
-                                document.getElementById('pending-status').style.display = 'none';
-                                document.getElementById('complete-status').style.display = 'block';
-                                document.getElementById('download-link').href = `/convert/download/${taskId}`;
-                                clearInterval(pollingInterval);
-                                break;
-                                
-                            case 'FAILED':
-                                document.getElementById('pending-status').style.display = 'none';
-                                document.getElementById('failed-status').style.display = 'block';
-                                document.getElementById('error-message').textContent = data.errorMessage || 'Unknown error occurred';
-                                clearInterval(pollingInterval);
-                                break;
-                                
-                            case 'PROCESSING':
-                            case 'PENDING':
-                            default:
-                                // Keep polling
-                                break;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error checking status:', error);
-                    });
-            }
-            
-            // Poll every 3 seconds
-            pollingInterval = setInterval(checkStatus, 3000);
-        });
-    </script>
+    <th:block layout:fragment="scripts">
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const taskId = document.getElementById('taskId').value;
+                let pollingInterval;
+                
+                // Start polling
+                checkStatus();
+                
+                function checkStatus() {
+                    fetch(`/convert/status/${taskId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Status update:', data);
+                            
+                            switch(data.status) {
+                                case 'COMPLETED':
+                                    document.getElementById('pending-status').style.display = 'none';
+                                    document.getElementById('complete-status').style.display = 'block';
+                                    document.getElementById('download-link').href = `/convert/download/${taskId}`;
+                                    clearInterval(pollingInterval);
+                                    break;
+                                    
+                                case 'FAILED':
+                                    document.getElementById('pending-status').style.display = 'none';
+                                    document.getElementById('failed-status').style.display = 'block';
+                                    document.getElementById('error-message').textContent = data.errorMessage || 'Unknown error occurred';
+                                    clearInterval(pollingInterval);
+                                    break;
+                                    
+                                case 'PROCESSING':
+                                case 'PENDING':
+                                default:
+                                    // Keep polling
+                                    break;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking status:', error);
+                        });
+                }
+                
+                // Poll every 3 seconds
+                pollingInterval = setInterval(checkStatus, 3000);
+            });
+        </script>
+    </th:block>
 </body>
 </html> 
